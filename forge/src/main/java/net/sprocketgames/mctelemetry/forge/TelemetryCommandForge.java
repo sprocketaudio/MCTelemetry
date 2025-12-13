@@ -39,22 +39,44 @@ public class TelemetryCommandForge {
                         .then(Commands.argument("nonce", StringArgumentType.word())
                                 .executes(context -> {
                                     String nonce = StringArgumentType.getString(context, "nonce");
-                                    String json = buildJson(context.getSource());
                                     CommandSourceStack source = context.getSource();
-                                    String payload = "TELEMETRY " + nonce + " " + json;
-
-                                    Component message = Component.literal(payload);
 
                                     announceInvocation(nonce);
-                                    logAndEcho(source, "Telemetry payload prepared: " + payload);
+                                    logAndEcho(source, "Starting telemetry command execution");
 
-                                    source.getServer().getPlayerList().broadcastSystemMessage(message, false);
-                                    source.getServer().sendSystemMessage(message);
-                                    source.sendSystemMessage(message);
-                                    source.sendSuccess(() -> message, true);
-                                    logAndEcho(source, "Telemetry command execution completed");
-                                    return 1;
+                                    try {
+                                        logAndEcho(source, "Assembling telemetry payload JSON");
+                                        String json = buildJson(source);
+                                        logAndEcho(source, "Telemetry JSON payload assembled: " + json);
+
+                                        String payload = "TELEMETRY " + nonce + " " + json;
+                                        Component message = Component.literal(payload);
+
+                                        logAndEcho(source, "Broadcasting telemetry payload to players and console");
+                                        broadcastPayload(source, message);
+
+                                        logAndEcho(source, "Telemetry command execution completed");
+                                        return 1;
+                                    } catch (Exception e) {
+                                        logErrorEverywhere("Telemetry command failed", e);
+                                        try {
+                                            source.sendFailure(Component.literal("[MCTelemetry] Telemetry command failed: " + e.getMessage()));
+                                        } catch (Exception inner) {
+                                            logErrorEverywhere("Failed to send failure message to source", inner);
+                                        }
+                                        return 0;
+                                    }
                                 })));
+    }
+
+    private static void broadcastPayload(CommandSourceStack source, Component message) {
+        source.getServer().getPlayerList().broadcastSystemMessage(message, false);
+        source.getServer().sendSystemMessage(message);
+        source.sendSystemMessage(message);
+        source.sendSuccess(() -> message, true);
+
+        System.out.println("[MCTelemetry] Payload broadcast: " + message.getString());
+        System.out.flush();
     }
 
     private static void announceInvocation(String nonce) {
@@ -77,6 +99,18 @@ public class TelemetryCommandForge {
 
         System.out.println(payload);
         System.out.flush();
+    }
+
+    private static void logErrorEverywhere(String message, Throwable error) {
+        LOGGER.error(message, error);
+        ROOT_LOGGER.error(message, error);
+        TELEMETRY_LOGGER.error(message, error);
+        MCTelemetryForge.LOGGER.error(message, error);
+        LogUtils.getLogger().error(message, error);
+
+        System.err.println(message + ": " + error.getMessage());
+        error.printStackTrace(System.err);
+        System.err.flush();
     }
 
     private static void logAndEcho(CommandSourceStack source, String message) {
