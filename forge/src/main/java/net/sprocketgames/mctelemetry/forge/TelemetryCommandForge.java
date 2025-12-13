@@ -165,21 +165,28 @@ public class TelemetryCommandForge {
 
         for (int i = 0; i < onlinePlayers.size(); i++) {
             ServerPlayer player = onlinePlayers.get(i);
-            logEverywhere("Snapshotting player before conversion (index " + i + "): " + player.getGameProfile());
+            safeLog("Snapshot loop entry index=" + i + ", playersSoFar=" + players.size());
+            safeLog("Snapshotting player before conversion (index " + i + "): " + player.getGameProfile());
             try {
                 PlayerSnapshot snapshot = toSnapshot(player);
-                logEverywhere("Snapshot object created (index " + i + "): name=" + snapshot.name() + ", uuid=" + snapshot.uuid());
+                safeLog("Snapshot object created (index " + i + "): name=" + snapshot.name() + ", uuid=" + snapshot.uuid());
                 try {
                     players.add(snapshot);
                     System.out.println("[MCTelemetry] Players list size after add at index " + i + " -> " + players.size());
                     System.out.flush();
-                    logEverywhere("Snapshot addition complete for index " + i);
+                    safeLog("Snapshot addition complete for index " + i);
                 } catch (Exception addError) {
                     logErrorEverywhere("Failed to add snapshot to list (index " + i + ")", addError);
                 }
             } catch (Exception e) {
                 logErrorEverywhere("Failed to snapshot player (index " + i + "): " + player.getGameProfile(), e);
                 logEverywhere("Continuing after failed snapshot for index " + i);
+            }
+
+            try {
+                safeLog("Snapshot loop post-step index=" + i + ", playersSoFar=" + players.size());
+            } catch (Exception e) {
+                logErrorEverywhere("Failed to log post-step state for index " + i, e);
             }
         }
 
@@ -247,5 +254,19 @@ public class TelemetryCommandForge {
 
     private static String currentMinecraftVersion() {
         return SharedConstants.getCurrentVersion().getName();
+    }
+
+    private static void safeLog(String message) {
+        try {
+            logEverywhere(message);
+        } catch (Exception e) {
+            try {
+                System.err.println("[MCTelemetry] Logging failure: " + message + " -> " + e.getMessage());
+                e.printStackTrace(System.err);
+                System.err.flush();
+            } catch (Exception inner) {
+                // Last resort logging guard
+            }
+        }
     }
 }
