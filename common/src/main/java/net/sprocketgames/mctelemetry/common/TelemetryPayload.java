@@ -2,6 +2,7 @@ package net.sprocketgames.mctelemetry.common;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 
 import java.util.Collection;
@@ -13,7 +14,16 @@ public final class TelemetryPayload {
     private TelemetryPayload() {
     }
 
+    public static String build(TelemetrySnapshot snapshot) {
+        Objects.requireNonNull(snapshot, "snapshot");
+        return build(snapshot.minecraftVersion(), snapshot.loader(), snapshot.players(), snapshot.mspt(), snapshot.tps());
+    }
+
     public static String build(String minecraftVersion, String loader, Collection<PlayerSnapshot> players) {
+        return build(minecraftVersion, loader, players, null, null);
+    }
+
+    public static String build(String minecraftVersion, String loader, Collection<PlayerSnapshot> players, Double mspt, Double tps) {
         Objects.requireNonNull(minecraftVersion, "minecraftVersion");
         Objects.requireNonNull(loader, "loader");
         Objects.requireNonNull(players, "players");
@@ -21,6 +31,18 @@ public final class TelemetryPayload {
         JsonObject root = new JsonObject();
         root.addProperty("mc", minecraftVersion);
         root.addProperty("loader", loader);
+
+        if (mspt == null) {
+            root.add("mspt", JsonNull.INSTANCE);
+        } else {
+            root.addProperty("mspt", mspt);
+        }
+
+        if (tps == null) {
+            root.add("tps", JsonNull.INSTANCE);
+        } else {
+            root.addProperty("tps", tps);
+        }
 
         JsonArray playersArray = new JsonArray();
         for (PlayerSnapshot player : players) {

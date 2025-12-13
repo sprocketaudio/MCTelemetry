@@ -6,17 +6,15 @@ import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetryPayload;
-import net.sprocketgames.mctelemetry.forge.TelemetryConfig;
+import net.sprocketgames.mctelemetry.common.TelemetrySnapshot;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -65,7 +63,7 @@ public class TelemetryCommandForge {
 
     private static String buildJson(CommandSourceStack source, boolean detailedLogging) {
         String mcVersion = "unknown";
-        List<PlayerSnapshot> players = collectPlayerSnapshots(source, detailedLogging);
+        List<PlayerSnapshot> emptyPlayers = Collections.emptyList();
 
         try {
             mcVersion = currentMinecraftVersion();
@@ -74,69 +72,18 @@ public class TelemetryCommandForge {
         }
 
         try {
-            return emitPayload(mcVersion, players, detailedLogging);
+            TelemetrySnapshot snapshot = TelemetryCollector.collect(source, detailedLogging, LOGGER, mcVersion);
+            return emitPayload(snapshot, detailedLogging);
         } catch (Exception e) {
             LOGGER.error("Failed while assembling telemetry JSON; returning fallback payload", e);
-            return TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, Collections.emptyList());
+            return TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, emptyPlayers);
         }
     }
 
-    private static String emitPayload(String mcVersion, List<PlayerSnapshot> players, boolean detailedLogging) {
-        String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
+    private static String emitPayload(TelemetrySnapshot snapshot, boolean detailedLogging) {
+        String payload = TelemetryPayload.build(snapshot);
         logDetailed(detailedLogging, "Telemetry JSON payload built: {}", payload);
         return payload;
-    }
-
-    private static List<PlayerSnapshot> collectPlayerSnapshots(CommandSourceStack source, boolean detailedLogging) {
-        List<PlayerSnapshot> players = new ArrayList<>();
-
-        List<ServerPlayer> onlinePlayers = Collections.emptyList();
-        try {
-            onlinePlayers = source.getServer().getPlayerList().getPlayers();
-        } catch (Exception e) {
-            logDetailed(detailedLogging, "Failed to fetch online players; proceeding with empty list", e);
-        }
-
-        if (onlinePlayers.isEmpty()) {
-            logDetailed(detailedLogging, "No online players detected; telemetry payload will contain an empty player list");
-            return players;
-        }
-
-        logDetailed(detailedLogging, "Snapshotting {} online player(s) for telemetry", onlinePlayers.size());
-        for (ServerPlayer player : onlinePlayers) {
-            try {
-                players.add(toSnapshot(player, detailedLogging));
-            } catch (Exception e) {
-                logDetailed(detailedLogging, "Failed to snapshot player {}", player.getGameProfile(), e);
-            }
-        }
-
-        return players;
-    }
-
-    private static PlayerSnapshot toSnapshot(ServerPlayer player, boolean detailedLogging) {
-        try {
-            String name = player.getGameProfile().getName();
-            String uuid = player.getGameProfile().getId().toString().replace("-", "");
-            return new PlayerSnapshot(name, uuid);
-        } catch (Throwable e) {
-            logDetailed(detailedLogging, "Error while converting player to snapshot: {}", player, e);
-            String fallbackName;
-            String fallbackUuid;
-            try {
-                fallbackName = player.getGameProfile().getName();
-            } catch (Exception ignored) {
-                fallbackName = "unknown";
-            }
-
-            try {
-                fallbackUuid = player.getGameProfile().getId() == null ? "" : player.getGameProfile().getId().toString().replace("-", "");
-            } catch (Exception ignored) {
-                fallbackUuid = "";
-            }
-
-            return new PlayerSnapshot(fallbackName, fallbackUuid);
-        }
     }
 
     private static String currentMinecraftVersion() {

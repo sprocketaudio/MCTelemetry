@@ -49,6 +49,9 @@ Telemetry
 ---------
 Use `/telemetry json test123` on the server to emit a single-line TELEMETRY log entry containing the current player list.
 
+Example output:
+`TELEMETRY test123 {"mc":"1.20.1","loader":"forge","mspt":12.3,"tps":20.0,"players":[{"name":"Steve","uuid":"00000000000000000000000000000000"}]}`
+
 Project layout
 --------------
 - `common/`: Platform-agnostic telemetry payload builder shared across loaders.
