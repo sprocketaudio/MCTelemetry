@@ -141,32 +141,37 @@ public class TelemetryCommandForge {
                     PlayerSnapshot snapshot = toSnapshot(player);
                     players.add(snapshot);
                     logEverywhere("Snapshot #" + i + " created for player: " + snapshot.name() + " (" + snapshot.uuid() + ")");
+                    logEverywhere("Snapshot creation complete for index " + i);
                 } catch (Exception e) {
                     logErrorEverywhere("Failed to snapshot player (index " + i + "): " + player.getGameProfile(), e);
-                    throw e;
+                    logEverywhere("Continuing after failed snapshot for index " + i);
                 }
             }
 
             logEverywhere("Player snapshot loop complete; collected " + players.size() + " player snapshots for telemetry");
 
-            String mcVersion;
+            String mcVersion = "unknown";
             try {
                 logEverywhere("Resolving current Minecraft version via SharedConstants");
                 mcVersion = currentMinecraftVersion();
                 logEverywhere("Minecraft version resolved as " + mcVersion);
             } catch (Exception e) {
                 logErrorEverywhere("Failed to resolve Minecraft version", e);
-                throw e;
+                logEverywhere("Proceeding with fallback minecraft version '" + mcVersion + "'");
             }
 
             logEverywhere("Preparing to invoke TelemetryPayload.build with loader=" + MCTelemetryForge.LOADER + " and " + players.size() + " players");
             String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
             logEverywhere("Telemetry JSON payload built: " + payload);
+            System.out.println("[MCTelemetry] Telemetry JSON: " + payload);
+            System.out.flush();
 
             return payload;
         } catch (Exception e) {
             logErrorEverywhere("Failed while assembling telemetry JSON", e);
-            throw e;
+            String fallback = "{\"mc\":\"unknown\",\"loader\":\"" + MCTelemetryForge.LOADER + "\",\"players\":[]}";
+            logEverywhere("Returning fallback telemetry JSON due to failure: " + fallback);
+            return fallback;
         } finally {
             System.out.flush();
             System.err.flush();
