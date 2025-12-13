@@ -18,7 +18,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 
-@Mod.EventBusSubscriber(modid = MCTelemetryForge.MOD_ID)
+@Mod.EventBusSubscriber(modid = MCTelemetryForge.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class TelemetryCommandForge {
     private static final Logger LOGGER = LogManager.getLogger(TelemetryCommandForge.class);
     private static final Logger ROOT_LOGGER = LogManager.getRootLogger();
@@ -26,12 +26,13 @@ public class TelemetryCommandForge {
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
-        LOGGER.info("Registering /telemetry command");
-        System.out.println("[MCTelemetry] Registering /telemetry command");
+        logEverywhere("RegisterCommandsEvent received: registering /telemetry command");
         event.getDispatcher().register(buildCommand());
+        logEverywhere("/telemetry command registration complete");
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildCommand() {
+        logEverywhere("Building /telemetry command tree");
         return Commands.literal("telemetry")
                 .requires(source -> true)
                 .then(Commands.literal("json")
@@ -45,12 +46,13 @@ public class TelemetryCommandForge {
                                     Component message = Component.literal(payload);
 
                                     announceInvocation(nonce);
-                                    logEverywhere(payload);
+                                    logAndEcho(source, "Telemetry payload prepared: " + payload);
 
                                     source.getServer().getPlayerList().broadcastSystemMessage(message, false);
                                     source.getServer().sendSystemMessage(message);
                                     source.sendSystemMessage(message);
                                     source.sendSuccess(() -> message, true);
+                                    logAndEcho(source, "Telemetry command execution completed");
                                     return 1;
                                 })));
     }
@@ -77,18 +79,36 @@ public class TelemetryCommandForge {
         System.out.flush();
     }
 
+    private static void logAndEcho(CommandSourceStack source, String message) {
+        logEverywhere(message);
+
+        try {
+            source.sendSystemMessage(Component.literal("[MCTelemetry] " + message));
+        } catch (Exception e) {
+            logEverywhere("Failed to send feedback to command source: " + e.getMessage());
+        }
+    }
+
     private static String buildJson(CommandSourceStack source) {
+        logEverywhere("Building telemetry JSON payload");
+        logEverywhere("Collecting player snapshots from server: " + source.getServer().toString());
         List<PlayerSnapshot> players = source.getServer().getPlayerList().getPlayers()
                 .stream()
                 .map(TelemetryCommandForge::toSnapshot)
                 .toList();
 
-        return TelemetryPayload.build(currentMinecraftVersion(), MCTelemetryForge.LOADER, players);
+        logEverywhere("Collected " + players.size() + " player snapshots for telemetry");
+
+        String payload = TelemetryPayload.build(currentMinecraftVersion(), MCTelemetryForge.LOADER, players);
+        logEverywhere("Telemetry JSON payload built: " + payload);
+
+        return payload;
     }
 
     private static PlayerSnapshot toSnapshot(ServerPlayer player) {
         String name = player.getGameProfile().getName();
         String uuid = player.getGameProfile().getId().toString().replace("-", "");
+        logEverywhere("Snapshotting player: " + name + " (" + uuid + ")");
         return new PlayerSnapshot(name, uuid);
     }
 
