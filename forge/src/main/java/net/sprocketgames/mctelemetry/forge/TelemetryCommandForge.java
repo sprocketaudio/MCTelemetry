@@ -140,8 +140,12 @@ public class TelemetryCommandForge {
                 logEverywhere("Snapshotting player before conversion (index " + i + "): " + player.getGameProfile());
                 try {
                     PlayerSnapshot snapshot = toSnapshot(player);
+                    System.out.println("[MCTelemetry] Adding snapshot to list at index " + i);
+                    System.out.flush();
                     players.add(snapshot);
                     logEverywhere("Snapshot #" + i + " created for player: " + snapshot.name() + " (" + snapshot.uuid() + ")");
+                    System.out.println("[MCTelemetry] Players list size now " + players.size());
+                    System.out.flush();
                     logEverywhere("Snapshot creation complete for index " + i);
                 } catch (Exception e) {
                     logErrorEverywhere("Failed to snapshot player (index " + i + "): " + player.getGameProfile(), e);
@@ -149,6 +153,8 @@ public class TelemetryCommandForge {
                 }
             }
 
+            System.out.println("[MCTelemetry] Snapshot loop finished with " + players.size() + " entries");
+            System.out.flush();
             logEverywhere("Player snapshot loop complete; collected " + players.size() + " player snapshots for telemetry");
 
             try {
@@ -177,6 +183,8 @@ public class TelemetryCommandForge {
 
     private static String emitPayload(String mcVersion, List<PlayerSnapshot> players) {
         logEverywhere("Preparing to invoke TelemetryPayload.build with loader=" + MCTelemetryForge.LOADER + " and " + players.size() + " players");
+        System.out.println("[MCTelemetry] About to build telemetry JSON with " + players.size() + " players");
+        System.out.flush();
         String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
         logEverywhere("Telemetry JSON payload built: " + payload);
         System.out.println("[MCTelemetry] Telemetry JSON: " + payload);
