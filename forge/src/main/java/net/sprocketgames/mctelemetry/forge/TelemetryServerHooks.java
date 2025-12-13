@@ -34,14 +34,19 @@ public class TelemetryServerHooks {
         boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
         String initialPayload = buildPayload(server, detailedLogging);
         int port = TelemetryHttpServer.resolvePort(TelemetryConfig.httpPort());
-        httpServer = new TelemetryHttpServer(MCTelemetryForge.LOGGER, initialPayload, port);
+        httpServer = new TelemetryHttpServer(
+                MCTelemetryForge.LOGGER,
+                initialPayload,
+                port,
+                TelemetryConfig.httpBindAddress());
         if (!httpServer.start()) {
             httpServer = null;
             return;
         }
 
         MCTelemetryForge.LOGGER.info(
-                "MCTelemetry HTTP endpoint active on 127.0.0.1:{} (interval: {} ticks)",
+                "MCTelemetry HTTP endpoint active on {}:{} (interval: {} ticks)",
+                httpServer.bindAddress(),
                 port,
                 refreshIntervalTicks);
     }

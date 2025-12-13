@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.Executors;
@@ -19,21 +20,27 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 class TelemetryHttpServer {
     private static final int DEFAULT_PORT = 8765;
+    private static final String DEFAULT_BIND_ADDRESS = "127.0.0.1";
 
     private final Logger logger;
     private final AtomicReference<String> lastTelemetryJson;
     private final int port;
+    private final InetAddress bindAddress;
+    private final String bindAddressText;
 
     private HttpServer server;
 
     TelemetryHttpServer(Logger logger, String initialTelemetry) {
-        this(logger, initialTelemetry, resolvePort(DEFAULT_PORT));
+        this(logger, initialTelemetry, resolvePort(DEFAULT_PORT), DEFAULT_BIND_ADDRESS);
     }
 
-    TelemetryHttpServer(Logger logger, String initialTelemetry, int port) {
+    TelemetryHttpServer(Logger logger, String initialTelemetry, int port, String bindAddress) {
         this.logger = Objects.requireNonNull(logger, "logger");
         this.lastTelemetryJson = new AtomicReference<>(initialTelemetry == null ? "{}" : initialTelemetry);
         this.port = port > 0 ? port : DEFAULT_PORT;
+        InetAddress resolved = resolveBindAddress(logger, bindAddress);
+        this.bindAddress = resolved;
+        this.bindAddressText = resolved.getHostAddress();
     }
 
     static int resolvePort(int configuredPort) {
@@ -56,13 +63,34 @@ class TelemetryHttpServer {
         return candidate > 0 && candidate <= 65535;
     }
 
+    private static InetAddress resolveBindAddress(Logger logger, String configuredAddress) {
+        String desired = configuredAddress == null || configuredAddress.isBlank() ? DEFAULT_BIND_ADDRESS : configuredAddress;
+
+        try {
+            InetAddress resolved = InetAddress.getByName(desired);
+            if (!resolved.isLoopbackAddress()) {
+                logger.warn("Configured bind address {} is not loopback; falling back to {}", desired, DEFAULT_BIND_ADDRESS);
+                return InetAddress.getByName(DEFAULT_BIND_ADDRESS);
+            }
+
+            return resolved;
+        } catch (UnknownHostException e) {
+            logger.warn("Unable to resolve bind address {}; falling back to {}", desired, DEFAULT_BIND_ADDRESS, e);
+            try {
+                return InetAddress.getByName(DEFAULT_BIND_ADDRESS);
+            } catch (UnknownHostException fatal) {
+                throw new IllegalStateException("Unable to resolve default bind address", fatal);
+            }
+        }
+    }
+
     boolean start() {
         if (server != null) {
             return true;
         }
 
         try {
-            InetSocketAddress address = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port);
+            InetSocketAddress address = new InetSocketAddress(bindAddress, port);
             server = HttpServer.create(address, 0);
             server.createContext("/telemetry", new TelemetryHandler());
             server.createContext("/health", new HealthHandler());
@@ -88,6 +116,10 @@ class TelemetryHttpServer {
         if (telemetryJson != null && !telemetryJson.isBlank()) {
             lastTelemetryJson.set(telemetryJson);
         }
+    }
+
+    String bindAddress() {
+        return bindAddressText;
     }
 
     private final class TelemetryHandler implements HttpHandler {
