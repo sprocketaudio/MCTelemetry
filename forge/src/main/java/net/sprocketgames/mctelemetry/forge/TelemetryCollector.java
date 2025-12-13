@@ -5,7 +5,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetrySnapshot;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -21,8 +21,12 @@ class TelemetryCollector {
     }
 
     static TelemetrySnapshot collect(CommandSourceStack source, boolean detailedLogging, Logger logger, String mcVersion) {
-        List<PlayerSnapshot> players = collectPlayerSnapshots(source, detailedLogging, logger);
-        TickMetrics metrics = readTickMetrics(source.getServer(), detailedLogging, logger);
+        return collect(source.getServer(), detailedLogging, logger, mcVersion);
+    }
+
+    static TelemetrySnapshot collect(MinecraftServer server, boolean detailedLogging, Logger logger, String mcVersion) {
+        List<PlayerSnapshot> players = collectPlayerSnapshots(server, detailedLogging, logger);
+        TickMetrics metrics = readTickMetrics(server, detailedLogging, logger);
 
         return TelemetrySnapshot.of(mcVersion, MCTelemetryForge.LOADER, players, metrics.mspt(), metrics.tps());
     }
@@ -83,12 +87,12 @@ class TelemetryCollector {
         return new long[0];
     }
 
-    private static List<PlayerSnapshot> collectPlayerSnapshots(CommandSourceStack source, boolean detailedLogging, Logger logger) {
+    private static List<PlayerSnapshot> collectPlayerSnapshots(MinecraftServer server, boolean detailedLogging, Logger logger) {
         List<PlayerSnapshot> players = new ArrayList<>();
 
         List<ServerPlayer> onlinePlayers = Collections.emptyList();
         try {
-            onlinePlayers = source.getServer().getPlayerList().getPlayers();
+            onlinePlayers = server.getPlayerList().getPlayers();
         } catch (Exception e) {
             logDetailed(detailedLogging, logger, "Failed to fetch online players; proceeding with empty list", e);
         }

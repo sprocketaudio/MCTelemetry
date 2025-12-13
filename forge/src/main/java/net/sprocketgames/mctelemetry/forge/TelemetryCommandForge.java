@@ -12,15 +12,15 @@ import net.minecraftforge.fml.common.Mod;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetryPayload;
 import net.sprocketgames.mctelemetry.common.TelemetrySnapshot;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import com.mojang.logging.LogUtils;
 
 import java.util.Collections;
 import java.util.List;
 
 @Mod.EventBusSubscriber(modid = MCTelemetryForge.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class TelemetryCommandForge {
-    private static final Logger LOGGER = LogManager.getLogger(TelemetryCommandForge.class);
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
