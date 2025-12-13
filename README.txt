@@ -53,3 +53,9 @@ Project layout
 --------------
 - `common/`: Platform-agnostic telemetry payload builder shared across loaders.
 - `forge/`: Forge entrypoint and command wiring that depends on the shared telemetry core.
+
+Testing when a proxy blocks downloads
+-------------------------------------
+- A local Gradle 8.14.x installation is available in the environment, so use `gradle test` instead of `./gradlew test` to avoid the wrapper trying to download its own distribution through the proxy.
+- External Maven and Gradle Plugin portals are blocked (403) in this environment, so dependency and plugin resolution will fail unless you provide a reachable mirror. Configure a proxy/mirror via `~/.gradle/gradle.properties` or pre-populate `~/.gradle/caches` and `~/.gradle/wrapper/dists` from a networked machine.
+- Once dependencies are cached or a mirror is configured, rerun `gradle test` from the repo root.
