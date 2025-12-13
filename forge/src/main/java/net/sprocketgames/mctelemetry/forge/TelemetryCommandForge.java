@@ -245,9 +245,17 @@ public class TelemetryCommandForge {
             System.out.println("[MCTelemetry] Telemetry JSON: " + payload);
             System.out.flush();
             return payload;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             logErrorEverywhere("TelemetryPayload.build threw an exception", e);
-            throw e;
+            try {
+                e.printStackTrace(System.err);
+                System.err.flush();
+            } catch (Exception ignored) {
+            }
+            String fallback = "{\"mc\":\"" + mcVersion + "\",\"loader\":\"" + MCTelemetryForge.LOADER + "\",\"players\":[]}";
+            System.out.println("[MCTelemetry] Using fallback telemetry JSON due to build failure: " + fallback);
+            System.out.flush();
+            return fallback;
         }
     }
 
@@ -257,9 +265,29 @@ public class TelemetryCommandForge {
             String uuid = player.getGameProfile().getId().toString().replace("-", "");
             logEverywhere("Snapshotting player: " + name + " (" + uuid + ")");
             return new PlayerSnapshot(name, uuid);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             logErrorEverywhere("Error while converting player to snapshot: " + player, e);
-            throw e;
+            try {
+                e.printStackTrace(System.err);
+                System.err.flush();
+            } catch (Exception ignored) {
+            }
+            // Continue with a minimal snapshot so downstream payload building can still complete.
+            String fallbackName;
+            String fallbackUuid;
+            try {
+                fallbackName = player.getGameProfile().getName();
+            } catch (Exception inner) {
+                fallbackName = "unknown";
+            }
+
+            try {
+                fallbackUuid = player.getGameProfile().getId() == null ? "" : player.getGameProfile().getId().toString().replace("-", "");
+            } catch (Exception inner) {
+                fallbackUuid = "";
+            }
+
+            return new PlayerSnapshot(fallbackName, fallbackUuid);
         }
     }
 
