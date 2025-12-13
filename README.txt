@@ -52,6 +52,13 @@ Use `/telemetry json test123` on the server to emit a single-line TELEMETRY log 
 Example output:
 `TELEMETRY test123 {"mc":"1.20.1","loader":"forge","mspt":12.3,"tps":20.0,"players":[{"name":"Steve","uuid":"00000000000000000000000000000000"}]}`
 
+Local HTTP endpoint: http://127.0.0.1:8765/telemetry
+------------------------------------------------------
+- The mod hosts a lightweight local HTTP server bound only to 127.0.0.1.
+- Fetch the most recent telemetry JSON without spamming the console:
+  - `curl http://127.0.0.1:8765/telemetry`
+- Health check: `curl http://127.0.0.1:8765/health`
+
 Project layout
 --------------
 - `common/`: Platform-agnostic telemetry payload builder shared across loaders.

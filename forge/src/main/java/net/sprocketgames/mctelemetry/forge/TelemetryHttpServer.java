@@ -1,0 +1,135 @@
+package net.sprocketgames.mctelemetry.forge;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpServer;
+import org.slf4j.Logger;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
+
+/**
+ * Lightweight HTTP server that exposes cached telemetry JSON to localhost only.
+ */
+class TelemetryHttpServer {
+    private static final int DEFAULT_PORT = 8765;
+
+    private final Logger logger;
+    private final AtomicReference<String> lastTelemetryJson;
+    private final int port;
+
+    private HttpServer server;
+
+    TelemetryHttpServer(Logger logger, String initialTelemetry) {
+        this(logger, initialTelemetry, resolvePort());
+    }
+
+    TelemetryHttpServer(Logger logger, String initialTelemetry, int port) {
+        this.logger = Objects.requireNonNull(logger, "logger");
+        this.lastTelemetryJson = new AtomicReference<>(initialTelemetry == null ? "{}" : initialTelemetry);
+        this.port = port > 0 ? port : DEFAULT_PORT;
+    }
+
+    static int resolvePort() {
+        String property = System.getProperty("MCTELEMETRY_PORT");
+        if (property == null || property.isBlank()) {
+            return DEFAULT_PORT;
+        }
+
+        try {
+            int parsed = Integer.parseInt(property.trim());
+            if (parsed > 0 && parsed <= 65535) {
+                return parsed;
+            }
+        } catch (NumberFormatException ignored) {
+            // fall through to default
+        }
+
+        return DEFAULT_PORT;
+    }
+
+    boolean start() {
+        if (server != null) {
+            return true;
+        }
+
+        try {
+            InetSocketAddress address = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port);
+            server = HttpServer.create(address, 0);
+            server.createContext("/telemetry", new TelemetryHandler());
+            server.createContext("/health", new HealthHandler());
+            server.setExecutor(Executors.newCachedThreadPool());
+            server.start();
+            logger.info("Started telemetry HTTP endpoint on http://{}:{}/telemetry", address.getHostString(), address.getPort());
+            return true;
+        } catch (IOException e) {
+            logger.error("Failed to start telemetry HTTP endpoint", e);
+            server = null;
+            return false;
+        }
+    }
+
+    void stop() {
+        if (server != null) {
+            server.stop(0);
+            server = null;
+            logger.info("Stopped telemetry HTTP endpoint");
+        }
+    }
+
+    void updateTelemetry(String telemetryJson) {
+        if (telemetryJson != null && !telemetryJson.isBlank()) {
+            lastTelemetryJson.set(telemetryJson);
+        }
+    }
+
+    private final class TelemetryHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                    exchange.getResponseHeaders().add("Allow", "GET");
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                byte[] payload = lastTelemetryJson.get().getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+                exchange.sendResponseHeaders(200, payload.length);
+                try (OutputStream output = exchange.getResponseBody()) {
+                    output.write(payload);
+                }
+            } finally {
+                exchange.close();
+            }
+        }
+    }
+
+    private final class HealthHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                    exchange.getResponseHeaders().add("Allow", "GET");
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                byte[] payload = "ok".getBytes(StandardCharsets.UTF_8);
+                exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=utf-8");
+                exchange.sendResponseHeaders(200, payload.length);
+                try (OutputStream output = exchange.getResponseBody()) {
+                    output.write(payload);
+                }
+            } finally {
+                exchange.close();
+            }
+        }
+    }
+}
