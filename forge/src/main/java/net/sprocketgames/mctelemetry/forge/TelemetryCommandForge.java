@@ -125,18 +125,31 @@ public class TelemetryCommandForge {
 
     private static String buildJson(CommandSourceStack source) {
         logEverywhere("Building telemetry JSON payload");
-        logEverywhere("Collecting player snapshots from server: " + source.getServer().toString());
-        List<PlayerSnapshot> players = source.getServer().getPlayerList().getPlayers()
-                .stream()
-                .map(TelemetryCommandForge::toSnapshot)
-                .toList();
 
-        logEverywhere("Collected " + players.size() + " player snapshots for telemetry");
+        try {
+            logEverywhere("Collecting player snapshots from server: " + source.getServer());
 
-        String payload = TelemetryPayload.build(currentMinecraftVersion(), MCTelemetryForge.LOADER, players);
-        logEverywhere("Telemetry JSON payload built: " + payload);
+            List<ServerPlayer> onlinePlayers = source.getServer().getPlayerList().getPlayers();
+            logEverywhere("Found " + onlinePlayers.size() + " online players to snapshot");
 
-        return payload;
+            List<PlayerSnapshot> players = onlinePlayers.stream()
+                    .peek(player -> logEverywhere("Snapshotting player before conversion: " + player.getGameProfile()))
+                    .map(TelemetryCommandForge::toSnapshot)
+                    .toList();
+
+            logEverywhere("Collected " + players.size() + " player snapshots for telemetry");
+
+            String mcVersion = currentMinecraftVersion();
+            logEverywhere("Using Minecraft version " + mcVersion + " and loader " + MCTelemetryForge.LOADER + " for payload");
+
+            String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
+            logEverywhere("Telemetry JSON payload built: " + payload);
+
+            return payload;
+        } catch (Exception e) {
+            logErrorEverywhere("Failed while assembling telemetry JSON", e);
+            throw e;
+        }
     }
 
     private static PlayerSnapshot toSnapshot(ServerPlayer player) {
