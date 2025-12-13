@@ -70,10 +70,33 @@ public class TelemetryCommandForge {
     }
 
     private static void broadcastPayload(CommandSourceStack source, Component message) {
-        source.getServer().getPlayerList().broadcastSystemMessage(message, false);
-        source.getServer().sendSystemMessage(message);
-        source.sendSystemMessage(message);
-        source.sendSuccess(() -> message, true);
+        try {
+            source.getServer().getPlayerList().broadcastSystemMessage(message, false);
+            logEverywhere("Broadcasted payload to all players");
+        } catch (Exception e) {
+            logErrorEverywhere("Failed to broadcast payload to players", e);
+        }
+
+        try {
+            source.getServer().sendSystemMessage(message);
+            logEverywhere("Sent payload to server system message");
+        } catch (Exception e) {
+            logErrorEverywhere("Failed to send payload to server", e);
+        }
+
+        try {
+            source.sendSystemMessage(message);
+            logEverywhere("Sent payload to command source system message");
+        } catch (Exception e) {
+            logErrorEverywhere("Failed to send payload to command source", e);
+        }
+
+        try {
+            source.sendSuccess(() -> message, true);
+            logEverywhere("Sent payload success response to command source");
+        } catch (Exception e) {
+            logErrorEverywhere("Failed to send success response to command source", e);
+        }
 
         System.out.println("[MCTelemetry] Payload broadcast: " + message.getString());
         System.out.flush();
@@ -131,21 +154,29 @@ public class TelemetryCommandForge {
 
         logEverywhere("Collecting player snapshots from server: " + source.getServer());
 
-        List<ServerPlayer> onlinePlayers = source.getServer().getPlayerList().getPlayers();
-        logEverywhere("Player list fetched; found " + onlinePlayers.size() + " online players to snapshot");
+        List<ServerPlayer> onlinePlayers = java.util.Collections.emptyList();
+        try {
+            onlinePlayers = source.getServer().getPlayerList().getPlayers();
+            logEverywhere("Player list fetched; found " + onlinePlayers.size() + " online players to snapshot");
+        } catch (Exception e) {
+            logErrorEverywhere("Failed to fetch online players", e);
+            logEverywhere("Proceeding with empty player list after fetch failure");
+        }
 
         for (int i = 0; i < onlinePlayers.size(); i++) {
             ServerPlayer player = onlinePlayers.get(i);
             logEverywhere("Snapshotting player before conversion (index " + i + "): " + player.getGameProfile());
             try {
                 PlayerSnapshot snapshot = toSnapshot(player);
-                System.out.println("[MCTelemetry] Adding snapshot to list at index " + i);
-                System.out.flush();
-                players.add(snapshot);
-                logEverywhere("Snapshot #" + i + " created for player: " + snapshot.name() + " (" + snapshot.uuid() + ")");
-                System.out.println("[MCTelemetry] Players list size now " + players.size());
-                System.out.flush();
-                logEverywhere("Snapshot creation complete for index " + i);
+                logEverywhere("Snapshot object created (index " + i + "): name=" + snapshot.name() + ", uuid=" + snapshot.uuid());
+                try {
+                    players.add(snapshot);
+                    System.out.println("[MCTelemetry] Players list size after add at index " + i + " -> " + players.size());
+                    System.out.flush();
+                    logEverywhere("Snapshot addition complete for index " + i);
+                } catch (Exception addError) {
+                    logErrorEverywhere("Failed to add snapshot to list (index " + i + ")", addError);
+                }
             } catch (Exception e) {
                 logErrorEverywhere("Failed to snapshot player (index " + i + "): " + player.getGameProfile(), e);
                 logEverywhere("Continuing after failed snapshot for index " + i);
@@ -155,6 +186,10 @@ public class TelemetryCommandForge {
         System.out.println("[MCTelemetry] Snapshot loop finished with " + players.size() + " entries");
         System.out.flush();
         logEverywhere("Player snapshot loop complete; collected " + players.size() + " player snapshots for telemetry");
+        for (int i = 0; i < players.size(); i++) {
+            PlayerSnapshot snapshot = players.get(i);
+            logEverywhere("Snapshot summary (index " + i + "): name=" + snapshot.name() + ", uuid=" + snapshot.uuid());
+        }
 
         try {
             logEverywhere("Resolving current Minecraft version via SharedConstants");
@@ -166,6 +201,7 @@ public class TelemetryCommandForge {
         }
 
         try {
+            logEverywhere("Entering telemetry payload build with " + players.size() + " players and version " + mcVersion);
             String payload = emitPayload(mcVersion, players);
             logEverywhere("buildJson completed normally");
             return payload;
@@ -185,18 +221,28 @@ public class TelemetryCommandForge {
         logEverywhere("Preparing to invoke TelemetryPayload.build with loader=" + MCTelemetryForge.LOADER + " and " + players.size() + " players");
         System.out.println("[MCTelemetry] About to build telemetry JSON with " + players.size() + " players");
         System.out.flush();
-        String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
-        logEverywhere("Telemetry JSON payload built: " + payload);
-        System.out.println("[MCTelemetry] Telemetry JSON: " + payload);
-        System.out.flush();
-        return payload;
+        try {
+            String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
+            logEverywhere("Telemetry JSON payload built: " + payload);
+            System.out.println("[MCTelemetry] Telemetry JSON: " + payload);
+            System.out.flush();
+            return payload;
+        } catch (Exception e) {
+            logErrorEverywhere("TelemetryPayload.build threw an exception", e);
+            throw e;
+        }
     }
 
     private static PlayerSnapshot toSnapshot(ServerPlayer player) {
-        String name = player.getGameProfile().getName();
-        String uuid = player.getGameProfile().getId().toString().replace("-", "");
-        logEverywhere("Snapshotting player: " + name + " (" + uuid + ")");
-        return new PlayerSnapshot(name, uuid);
+        try {
+            String name = player.getGameProfile().getName();
+            String uuid = player.getGameProfile().getId().toString().replace("-", "");
+            logEverywhere("Snapshotting player: " + name + " (" + uuid + ")");
+            return new PlayerSnapshot(name, uuid);
+        } catch (Exception e) {
+            logErrorEverywhere("Error while converting player to snapshot: " + player, e);
+            throw e;
+        }
     }
 
     private static String currentMinecraftVersion() {
