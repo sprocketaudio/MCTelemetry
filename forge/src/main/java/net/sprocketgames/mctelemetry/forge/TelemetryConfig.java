@@ -18,6 +18,11 @@ public class TelemetryConfig {
     }
 
     public static boolean detailedLoggingEnabled() {
-        return DETAILED_LOGGING.get();
+        try {
+            return DETAILED_LOGGING.get();
+        } catch (IllegalStateException e) {
+            MCTelemetryForge.LOGGER.debug("Detailed logging config not yet loaded; defaulting to false");
+            return false;
+        }
     }
 }
