@@ -44,3 +44,12 @@ Community Documentation: https://docs.minecraftforge.net/en/1.20.1/gettingstarte
 LexManos' Install Video: https://youtu.be/8VEdtQLuLO0
 Forge Forums: https://forums.minecraftforge.net/
 Forge Discord: https://discord.minecraftforge.net/
+
+Telemetry
+---------
+Use `/telemetry json test123` on the server to emit a single-line TELEMETRY log entry containing the current player list.
+
+Project layout
+--------------
+- `common/`: Platform-agnostic telemetry payload builder shared across loaders.
+- `forge/`: Forge entrypoint and command wiring that depends on the shared telemetry core.
