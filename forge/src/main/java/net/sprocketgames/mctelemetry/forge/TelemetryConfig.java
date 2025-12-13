@@ -24,6 +24,7 @@ public class TelemetryConfig {
     public static final ForgeConfigSpec.ConfigValue<String> HTTP_BIND_ADDRESS = BUILDER
             .comment(
                     "Bind address for the local telemetry HTTP server. Defaults to 127.0.0.1 (loopback-only).",
+                    "Use 0.0.0.0 when running inside Docker/Pterodactyl.",
                     "Can also be overridden via system property MCTELEMETRY_BIND.")
             .define("httpBindAddress", DEFAULT_HTTP_BIND_ADDRESS);
 

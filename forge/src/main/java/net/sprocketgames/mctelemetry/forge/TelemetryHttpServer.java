@@ -75,8 +75,8 @@ class TelemetryHttpServer {
 
         try {
             InetAddress resolved = InetAddress.getByName(desired);
-            if (!resolved.isLoopbackAddress()) {
-                throw new IllegalArgumentException("Bind address must be loopback-only: " + desired);
+            if (!(resolved.isLoopbackAddress() || resolved.isAnyLocalAddress())) {
+                throw new IllegalArgumentException("Bind address must be loopback or 0.0.0.0: " + desired);
             }
 
             return resolved;
