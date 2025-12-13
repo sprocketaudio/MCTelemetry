@@ -1,0 +1,11 @@
+plugins {
+    id 'java-library'
+}
+
+base {
+    archivesName = "${mod_id}-common"
+}
+
+dependencies {
+    api 'com.google.code.gson:gson:2.10.1'
+}

@@ -1,20 +1,16 @@
-package net.sprocketgames.mctelemetry;
+package net.sprocketgames.mctelemetry.forge;
 
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 
-@Mod(MCTelemetry.MOD_ID)
-public class MCTelemetry
-{
+@Mod(MCTelemetryForge.MOD_ID)
+public class MCTelemetryForge {
     public static final String MOD_ID = "mctelemetry";
-    public static final String MINECRAFT_VERSION = "1.20.1";
     public static final String LOADER = "forge";
 
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public MCTelemetry()
-    {
-        // No initialization needed for this minimal telemetry mod
+    public MCTelemetryForge() {
     }
 }
