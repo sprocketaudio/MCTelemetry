@@ -28,14 +28,22 @@ public class TelemetryServerHooks {
         }
 
         minecraftVersion = SharedConstants.getCurrentVersion().getName();
-        String initialPayload = buildPayload(server);
+        refreshIntervalTicks = Math.max(1, TelemetryConfig.telemetryRefreshTicks());
+        ticksUntilRefresh = refreshIntervalTicks;
+
+        boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
+        String initialPayload = buildPayload(server, detailedLogging);
         int port = TelemetryHttpServer.resolvePort(TelemetryConfig.httpPort());
         httpServer = new TelemetryHttpServer(MCTelemetryForge.LOGGER, initialPayload, port);
         if (!httpServer.start()) {
             httpServer = null;
+            return;
         }
-        refreshIntervalTicks = Math.max(1, TelemetryConfig.telemetryRefreshTicks());
-        ticksUntilRefresh = refreshIntervalTicks;
+
+        MCTelemetryForge.LOGGER.info(
+                "MCTelemetry HTTP endpoint active on 127.0.0.1:{} (interval: {} ticks)",
+                port,
+                refreshIntervalTicks);
     }
 
     @SubscribeEvent
@@ -57,11 +65,14 @@ public class TelemetryServerHooks {
         }
 
         ticksUntilRefresh = refreshIntervalTicks;
-        httpServer.updateTelemetry(buildPayload(event.getServer()));
+
+        boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
+        String payload = buildPayload(event.getServer(), detailedLogging);
+        httpServer.updateTelemetry(payload);
+        logCachedUpdate(detailedLogging, payload);
     }
 
-    private static String buildPayload(MinecraftServer server) {
-        boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
+    private static String buildPayload(MinecraftServer server, boolean detailedLogging) {
         try {
             TelemetrySnapshot snapshot = TelemetryCollector.collect(server, detailedLogging, MCTelemetryForge.LOGGER, minecraftVersion);
             return TelemetryPayload.build(snapshot);
@@ -69,5 +80,14 @@ public class TelemetryServerHooks {
             MCTelemetryForge.LOGGER.warn("Failed to refresh telemetry payload; using fallback", e);
             return TelemetryPayload.build(minecraftVersion, MCTelemetryForge.LOADER, Collections.emptyList());
         }
+    }
+
+    private static void logCachedUpdate(boolean detailedLogging, String payload) {
+        if (!detailedLogging) {
+            return;
+        }
+
+        int length = payload == null ? 0 : payload.length();
+        MCTelemetryForge.LOGGER.info("Cached telemetry JSON refreshed ({} chars)", length);
     }
 }

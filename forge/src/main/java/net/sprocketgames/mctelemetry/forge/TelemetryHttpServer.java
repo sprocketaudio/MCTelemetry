@@ -68,7 +68,6 @@ class TelemetryHttpServer {
             server.createContext("/health", new HealthHandler());
             server.setExecutor(Executors.newCachedThreadPool());
             server.start();
-            logger.info("Started telemetry HTTP endpoint on http://{}:{}/telemetry", address.getHostString(), address.getPort());
             return true;
         } catch (IOException e) {
             logger.error("Failed to start telemetry HTTP endpoint", e);
