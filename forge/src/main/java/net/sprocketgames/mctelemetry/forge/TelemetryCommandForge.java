@@ -126,13 +126,14 @@ public class TelemetryCommandForge {
     private static String buildJson(CommandSourceStack source) {
         logEverywhere("Building telemetry JSON payload");
 
+        String mcVersion = "unknown";
+        List<PlayerSnapshot> players = new java.util.ArrayList<>();
+
         try {
             logEverywhere("Collecting player snapshots from server: " + source.getServer());
 
             List<ServerPlayer> onlinePlayers = source.getServer().getPlayerList().getPlayers();
             logEverywhere("Player list fetched; found " + onlinePlayers.size() + " online players to snapshot");
-
-            List<PlayerSnapshot> players = new java.util.ArrayList<>();
 
             for (int i = 0; i < onlinePlayers.size(); i++) {
                 ServerPlayer player = onlinePlayers.get(i);
@@ -150,7 +151,6 @@ public class TelemetryCommandForge {
 
             logEverywhere("Player snapshot loop complete; collected " + players.size() + " player snapshots for telemetry");
 
-            String mcVersion = "unknown";
             try {
                 logEverywhere("Resolving current Minecraft version via SharedConstants");
                 mcVersion = currentMinecraftVersion();
@@ -160,22 +160,28 @@ public class TelemetryCommandForge {
                 logEverywhere("Proceeding with fallback minecraft version '" + mcVersion + "'");
             }
 
-            logEverywhere("Preparing to invoke TelemetryPayload.build with loader=" + MCTelemetryForge.LOADER + " and " + players.size() + " players");
-            String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
-            logEverywhere("Telemetry JSON payload built: " + payload);
-            System.out.println("[MCTelemetry] Telemetry JSON: " + payload);
-            System.out.flush();
-
+            String payload = emitPayload(mcVersion, players);
+            logEverywhere("buildJson completed normally");
             return payload;
         } catch (Exception e) {
             logErrorEverywhere("Failed while assembling telemetry JSON", e);
-            String fallback = "{\"mc\":\"unknown\",\"loader\":\"" + MCTelemetryForge.LOADER + "\",\"players\":[]}";
+            String fallback = "{\"mc\":\"" + mcVersion + "\",\"loader\":\"" + MCTelemetryForge.LOADER + "\",\"players\":[]}";
             logEverywhere("Returning fallback telemetry JSON due to failure: " + fallback);
             return fallback;
         } finally {
+            System.out.println("[MCTelemetry] buildJson exiting; mcVersion=" + mcVersion + ", players=" + players.size());
             System.out.flush();
             System.err.flush();
         }
+    }
+
+    private static String emitPayload(String mcVersion, List<PlayerSnapshot> players) {
+        logEverywhere("Preparing to invoke TelemetryPayload.build with loader=" + MCTelemetryForge.LOADER + " and " + players.size() + " players");
+        String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
+        logEverywhere("Telemetry JSON payload built: " + payload);
+        System.out.println("[MCTelemetry] Telemetry JSON: " + payload);
+        System.out.flush();
+        return payload;
     }
 
     private static PlayerSnapshot toSnapshot(ServerPlayer player) {
