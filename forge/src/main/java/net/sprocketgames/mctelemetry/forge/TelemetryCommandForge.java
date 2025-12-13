@@ -6,6 +6,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -34,10 +35,12 @@ public class TelemetryCommandForge {
                                     String payload = "TELEMETRY " + nonce + " " + json;
 
                                     MCTelemetryForge.LOGGER.info(payload);
+                                    MinecraftServer.LOGGER.info(payload);
+                                    System.out.println(payload);
                                     source.getServer().sendSystemMessage(Component.literal(payload));
                                     source.sendSuccess(() -> Component.literal(payload), false);
                                     return 1;
-                                })));
+                                }))); 
     }
 
     private static String buildJson(CommandSourceStack source) {
