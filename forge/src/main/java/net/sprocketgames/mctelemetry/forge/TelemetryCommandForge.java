@@ -6,7 +6,6 @@ import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -21,7 +20,8 @@ import java.util.List;
 
 @Mod.EventBusSubscriber(modid = MCTelemetryForge.MOD_ID)
 public class TelemetryCommandForge {
-    private static final Logger SERVER_LOGGER = LogManager.getLogger(MinecraftServer.class);
+    private static final Logger ROOT_LOGGER = LogManager.getRootLogger();
+    private static final Logger TELEMETRY_LOGGER = LogManager.getLogger("mctelemetry");
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
@@ -30,7 +30,7 @@ public class TelemetryCommandForge {
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildCommand() {
         return Commands.literal("telemetry")
-                .requires(source -> source.hasPermission(2))
+                .requires(source -> true)
                 .then(Commands.literal("json")
                         .then(Commands.argument("nonce", StringArgumentType.word())
                                 .executes(context -> {
@@ -41,16 +41,24 @@ public class TelemetryCommandForge {
 
                                     Component message = Component.literal(payload);
 
-                                    MCTelemetryForge.LOGGER.info(payload);
-                                    LogUtils.getLogger().info(payload);
-                                    SERVER_LOGGER.info(payload);
-                                    System.out.println(payload);
+                                    logEverywhere(payload);
 
+                                    source.getServer().getPlayerList().broadcastSystemMessage(message, false);
                                     source.getServer().sendSystemMessage(message);
                                     source.sendSystemMessage(message);
                                     source.sendSuccess(() -> message, true);
                                     return 1;
-                                }))); 
+                                })));
+    }
+
+    private static void logEverywhere(String payload) {
+        MCTelemetryForge.LOGGER.info(payload);
+        LogUtils.getLogger().info(payload);
+        ROOT_LOGGER.info(payload);
+        TELEMETRY_LOGGER.info(payload);
+
+        System.out.println(payload);
+        System.out.flush();
     }
 
     private static String buildJson(CommandSourceStack source) {
