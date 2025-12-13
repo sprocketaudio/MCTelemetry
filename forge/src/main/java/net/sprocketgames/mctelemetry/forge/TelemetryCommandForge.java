@@ -82,7 +82,7 @@ public class TelemetryCommandForge {
 
     private static String emitPayload(String mcVersion, List<PlayerSnapshot> players) {
         String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
-        LOGGER.info("Telemetry JSON payload built: {}", payload);
+        logDetailed("Telemetry JSON payload built: {}", payload);
         return payload;
     }
 
