@@ -14,6 +14,6 @@ public class MCTelemetryForge {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public MCTelemetryForge() {
-        ModLoadingContext.registerConfig(ModConfig.Type.SERVER, TelemetryConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, TelemetryConfig.SPEC);
     }
 }
