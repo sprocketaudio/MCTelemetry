@@ -20,11 +20,14 @@ import java.util.List;
 
 @Mod.EventBusSubscriber(modid = MCTelemetryForge.MOD_ID)
 public class TelemetryCommandForge {
+    private static final Logger LOGGER = LogManager.getLogger(TelemetryCommandForge.class);
     private static final Logger ROOT_LOGGER = LogManager.getRootLogger();
     private static final Logger TELEMETRY_LOGGER = LogManager.getLogger("mctelemetry");
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
+        LOGGER.info("Registering /telemetry command");
+        System.out.println("[MCTelemetry] Registering /telemetry command");
         event.getDispatcher().register(buildCommand());
     }
 
@@ -41,6 +44,7 @@ public class TelemetryCommandForge {
 
                                     Component message = Component.literal(payload);
 
+                                    announceInvocation(nonce);
                                     logEverywhere(payload);
 
                                     source.getServer().getPlayerList().broadcastSystemMessage(message, false);
@@ -49,6 +53,18 @@ public class TelemetryCommandForge {
                                     source.sendSuccess(() -> message, true);
                                     return 1;
                                 })));
+    }
+
+    private static void announceInvocation(String nonce) {
+        String notice = "Telemetry command invoked with nonce: " + nonce;
+
+        LOGGER.info(notice);
+        ROOT_LOGGER.info(notice);
+        TELEMETRY_LOGGER.info(notice);
+        MCTelemetryForge.LOGGER.info(notice);
+
+        System.out.println("[MCTelemetry] " + notice);
+        System.out.flush();
     }
 
     private static void logEverywhere(String payload) {
