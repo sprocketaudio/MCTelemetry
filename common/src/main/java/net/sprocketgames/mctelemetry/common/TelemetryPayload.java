@@ -1,6 +1,7 @@
 package net.sprocketgames.mctelemetry.common;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
@@ -9,7 +10,9 @@ import java.util.Collection;
 import java.util.Objects;
 
 public final class TelemetryPayload {
-    private static final Gson GSON = new Gson();
+    private static final Gson GSON = new GsonBuilder()
+            .serializeNulls()
+            .create();
 
     private TelemetryPayload() {
     }
@@ -32,17 +35,8 @@ public final class TelemetryPayload {
         root.addProperty("mc", minecraftVersion);
         root.addProperty("loader", loader);
 
-        if (mspt == null) {
-            root.add("mspt", JsonNull.INSTANCE);
-        } else {
-            root.addProperty("mspt", mspt);
-        }
-
-        if (tps == null) {
-            root.add("tps", JsonNull.INSTANCE);
-        } else {
-            root.addProperty("tps", tps);
-        }
+        addNullableNumber(root, "mspt", mspt);
+        addNullableNumber(root, "tps", tps);
 
         JsonArray playersArray = new JsonArray();
         for (PlayerSnapshot player : players) {
@@ -54,5 +48,14 @@ public final class TelemetryPayload {
 
         root.add("players", playersArray);
         return GSON.toJson(root);
+    }
+
+    private static void addNullableNumber(JsonObject root, String key, Double value) {
+        if (value == null || value.isNaN() || value.isInfinite()) {
+            root.add(key, JsonNull.INSTANCE);
+            return;
+        }
+
+        root.addProperty(key, value);
     }
 }

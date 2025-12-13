@@ -7,7 +7,6 @@ import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetrySnapshot;
 import org.slf4j.Logger;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,48 +42,18 @@ class TelemetryCollector {
     }
 
     private static OptionalDouble averageTickTimeMs(MinecraftServer server, boolean detailedLogging, Logger logger) {
-        long[] tickTimes = readTickTimes(server, detailedLogging, logger);
-        if (tickTimes.length == 0) {
-            return OptionalDouble.empty();
-        }
-
-        double totalMs = 0.0;
-        int samples = 0;
-        for (long time : tickTimes) {
-            if (time <= 0) {
-                continue;
+        try {
+            double averageMspt = server.getAverageTickTime();
+            if (Double.isNaN(averageMspt) || averageMspt <= 0.0) {
+                logDetailed(detailedLogging, logger, "Average tick time unavailable or invalid; mspt/tps will be null");
+                return OptionalDouble.empty();
             }
 
-            totalMs += nanosToMillis(time);
-            samples++;
-        }
-
-        if (samples == 0) {
+            return OptionalDouble.of(averageMspt);
+        } catch (Exception e) {
+            logDetailed(detailedLogging, logger, "Failed reading tick timing data", e);
             return OptionalDouble.empty();
         }
-
-        return OptionalDouble.of(totalMs / samples);
-    }
-
-    private static long[] readTickTimes(MinecraftServer server, boolean detailedLogging, Logger logger) {
-        for (String fieldName : new String[] {"tickTimesNanos", "tickTimes"}) {
-            try {
-                Field field = MinecraftServer.class.getDeclaredField(fieldName);
-                field.setAccessible(true);
-                Object value = field.get(server);
-                if (value instanceof long[] ticks && ticks.length > 0) {
-                    return ticks.clone();
-                }
-            } catch (NoSuchFieldException ignored) {
-                // Try the next candidate field name.
-            } catch (Exception e) {
-                logDetailed(detailedLogging, logger, "Failed reading tick timing data via '{}'", fieldName, e);
-                break;
-            }
-        }
-
-        logDetailed(detailedLogging, logger, "Tick timing data unavailable; mspt/tps will be null");
-        return new long[0];
     }
 
     private static List<PlayerSnapshot> collectPlayerSnapshots(MinecraftServer server, boolean detailedLogging, Logger logger) {
