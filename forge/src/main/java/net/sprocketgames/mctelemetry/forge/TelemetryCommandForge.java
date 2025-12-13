@@ -5,6 +5,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -29,7 +30,12 @@ public class TelemetryCommandForge {
                                 .executes(context -> {
                                     String nonce = StringArgumentType.getString(context, "nonce");
                                     String json = buildJson(context.getSource());
-                                    MCTelemetryForge.LOGGER.info("TELEMETRY {} {}", nonce, json);
+                                    CommandSourceStack source = context.getSource();
+                                    String payload = "TELEMETRY " + nonce + " " + json;
+
+                                    MCTelemetryForge.LOGGER.info(payload);
+                                    source.getServer().sendSystemMessage(Component.literal(payload));
+                                    source.sendSuccess(() -> Component.literal(payload), false);
                                     return 1;
                                 })));
     }
