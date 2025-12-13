@@ -6,13 +6,13 @@ import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetryPayload;
+import com.mojang.logging.LogUtils;
 
 import java.util.List;
 
@@ -35,7 +35,7 @@ public class TelemetryCommandForge {
                                     String payload = "TELEMETRY " + nonce + " " + json;
 
                                     MCTelemetryForge.LOGGER.info(payload);
-                                    MinecraftServer.LOGGER.info(payload);
+                                    LogUtils.getLogger().info(payload);
                                     System.out.println(payload);
                                     source.getServer().sendSystemMessage(Component.literal(payload));
                                     source.sendSuccess(() -> Component.literal(payload), false);
