@@ -129,43 +129,43 @@ public class TelemetryCommandForge {
         String mcVersion = "unknown";
         List<PlayerSnapshot> players = new java.util.ArrayList<>();
 
-        try {
-            logEverywhere("Collecting player snapshots from server: " + source.getServer());
+        logEverywhere("Collecting player snapshots from server: " + source.getServer());
 
-            List<ServerPlayer> onlinePlayers = source.getServer().getPlayerList().getPlayers();
-            logEverywhere("Player list fetched; found " + onlinePlayers.size() + " online players to snapshot");
+        List<ServerPlayer> onlinePlayers = source.getServer().getPlayerList().getPlayers();
+        logEverywhere("Player list fetched; found " + onlinePlayers.size() + " online players to snapshot");
 
-            for (int i = 0; i < onlinePlayers.size(); i++) {
-                ServerPlayer player = onlinePlayers.get(i);
-                logEverywhere("Snapshotting player before conversion (index " + i + "): " + player.getGameProfile());
-                try {
-                    PlayerSnapshot snapshot = toSnapshot(player);
-                    System.out.println("[MCTelemetry] Adding snapshot to list at index " + i);
-                    System.out.flush();
-                    players.add(snapshot);
-                    logEverywhere("Snapshot #" + i + " created for player: " + snapshot.name() + " (" + snapshot.uuid() + ")");
-                    System.out.println("[MCTelemetry] Players list size now " + players.size());
-                    System.out.flush();
-                    logEverywhere("Snapshot creation complete for index " + i);
-                } catch (Exception e) {
-                    logErrorEverywhere("Failed to snapshot player (index " + i + "): " + player.getGameProfile(), e);
-                    logEverywhere("Continuing after failed snapshot for index " + i);
-                }
-            }
-
-            System.out.println("[MCTelemetry] Snapshot loop finished with " + players.size() + " entries");
-            System.out.flush();
-            logEverywhere("Player snapshot loop complete; collected " + players.size() + " player snapshots for telemetry");
-
+        for (int i = 0; i < onlinePlayers.size(); i++) {
+            ServerPlayer player = onlinePlayers.get(i);
+            logEverywhere("Snapshotting player before conversion (index " + i + "): " + player.getGameProfile());
             try {
-                logEverywhere("Resolving current Minecraft version via SharedConstants");
-                mcVersion = currentMinecraftVersion();
-                logEverywhere("Minecraft version resolved as " + mcVersion);
+                PlayerSnapshot snapshot = toSnapshot(player);
+                System.out.println("[MCTelemetry] Adding snapshot to list at index " + i);
+                System.out.flush();
+                players.add(snapshot);
+                logEverywhere("Snapshot #" + i + " created for player: " + snapshot.name() + " (" + snapshot.uuid() + ")");
+                System.out.println("[MCTelemetry] Players list size now " + players.size());
+                System.out.flush();
+                logEverywhere("Snapshot creation complete for index " + i);
             } catch (Exception e) {
-                logErrorEverywhere("Failed to resolve Minecraft version", e);
-                logEverywhere("Proceeding with fallback minecraft version '" + mcVersion + "'");
+                logErrorEverywhere("Failed to snapshot player (index " + i + "): " + player.getGameProfile(), e);
+                logEverywhere("Continuing after failed snapshot for index " + i);
             }
+        }
 
+        System.out.println("[MCTelemetry] Snapshot loop finished with " + players.size() + " entries");
+        System.out.flush();
+        logEverywhere("Player snapshot loop complete; collected " + players.size() + " player snapshots for telemetry");
+
+        try {
+            logEverywhere("Resolving current Minecraft version via SharedConstants");
+            mcVersion = currentMinecraftVersion();
+            logEverywhere("Minecraft version resolved as " + mcVersion);
+        } catch (Exception e) {
+            logErrorEverywhere("Failed to resolve Minecraft version", e);
+            logEverywhere("Proceeding with fallback minecraft version '" + mcVersion + "'");
+        }
+
+        try {
             String payload = emitPayload(mcVersion, players);
             logEverywhere("buildJson completed normally");
             return payload;
