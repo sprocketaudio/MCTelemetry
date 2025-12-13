@@ -34,12 +34,18 @@ public class TelemetryServerHooks {
         boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
         String initialPayload = buildPayload(server, detailedLogging);
         int port = TelemetryHttpServer.resolvePort(TelemetryConfig.httpPort());
-        httpServer = new TelemetryHttpServer(
-                MCTelemetryForge.LOGGER,
-                initialPayload,
-                port,
-                TelemetryConfig.httpBindAddress());
-        if (!httpServer.start()) {
+        try {
+            httpServer = new TelemetryHttpServer(
+                    MCTelemetryForge.LOGGER,
+                    initialPayload,
+                    port,
+                    TelemetryConfig.httpBindAddress());
+            if (!httpServer.start()) {
+                httpServer = null;
+                return;
+            }
+        } catch (IllegalArgumentException e) {
+            MCTelemetryForge.LOGGER.error("Failed to configure telemetry HTTP endpoint: {}", e.getMessage());
             httpServer = null;
             return;
         }

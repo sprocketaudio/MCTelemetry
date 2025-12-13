@@ -22,7 +22,9 @@ public class TelemetryConfig {
             .defineInRange("httpPort", DEFAULT_HTTP_PORT, 1, 65535);
 
     public static final ForgeConfigSpec.ConfigValue<String> HTTP_BIND_ADDRESS = BUILDER
-            .comment("Bind address for the local telemetry HTTP server. Defaults to 127.0.0.1 (loopback-only).")
+            .comment(
+                    "Bind address for the local telemetry HTTP server. Defaults to 127.0.0.1 (loopback-only).",
+                    "Can also be overridden via system property MCTELEMETRY_BIND.")
             .define("httpBindAddress", DEFAULT_HTTP_BIND_ADDRESS);
 
     public static final ForgeConfigSpec.IntValue TELEMETRY_REFRESH_TICKS = BUILDER

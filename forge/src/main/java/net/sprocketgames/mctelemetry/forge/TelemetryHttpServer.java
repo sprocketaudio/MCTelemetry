@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicReference;
 class TelemetryHttpServer {
     private static final int DEFAULT_PORT = 8765;
     private static final String DEFAULT_BIND_ADDRESS = "127.0.0.1";
+    private static final String BIND_OVERRIDE_PROPERTY = "MCTELEMETRY_BIND";
 
     private final Logger logger;
     private final AtomicReference<String> lastTelemetryJson;
@@ -64,23 +65,23 @@ class TelemetryHttpServer {
     }
 
     private static InetAddress resolveBindAddress(Logger logger, String configuredAddress) {
-        String desired = configuredAddress == null || configuredAddress.isBlank() ? DEFAULT_BIND_ADDRESS : configuredAddress;
+        String override = System.getProperty(BIND_OVERRIDE_PROPERTY);
+        String desired = override != null && !override.isBlank() ? override.trim() : configuredAddress;
+        if (desired == null || desired.isBlank()) {
+            desired = DEFAULT_BIND_ADDRESS;
+        } else {
+            desired = desired.trim();
+        }
 
         try {
             InetAddress resolved = InetAddress.getByName(desired);
             if (!resolved.isLoopbackAddress()) {
-                logger.warn("Configured bind address {} is not loopback; falling back to {}", desired, DEFAULT_BIND_ADDRESS);
-                return InetAddress.getByName(DEFAULT_BIND_ADDRESS);
+                throw new IllegalArgumentException("Bind address must be loopback-only: " + desired);
             }
 
             return resolved;
         } catch (UnknownHostException e) {
-            logger.warn("Unable to resolve bind address {}; falling back to {}", desired, DEFAULT_BIND_ADDRESS, e);
-            try {
-                return InetAddress.getByName(DEFAULT_BIND_ADDRESS);
-            } catch (UnknownHostException fatal) {
-                throw new IllegalStateException("Unable to resolve default bind address", fatal);
-            }
+            throw new IllegalArgumentException("Unable to resolve bind address: " + desired, e);
         }
     }
 
