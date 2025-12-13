@@ -14,10 +14,9 @@ import java.util.Collections;
 
 @Mod.EventBusSubscriber(modid = MCTelemetryForge.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class TelemetryServerHooks {
-    private static final int TELEMETRY_REFRESH_TICKS = 200;
-
     private static TelemetryHttpServer httpServer;
-    private static int ticksUntilRefresh = TELEMETRY_REFRESH_TICKS;
+    private static int refreshIntervalTicks = TelemetryConfig.telemetryRefreshTicks();
+    private static int ticksUntilRefresh = refreshIntervalTicks;
     private static String minecraftVersion = SharedConstants.getCurrentVersion().getName();
 
     @SubscribeEvent
@@ -30,11 +29,13 @@ public class TelemetryServerHooks {
 
         minecraftVersion = SharedConstants.getCurrentVersion().getName();
         String initialPayload = buildPayload(server);
-        httpServer = new TelemetryHttpServer(MCTelemetryForge.LOGGER, initialPayload);
+        int port = TelemetryHttpServer.resolvePort(TelemetryConfig.httpPort());
+        httpServer = new TelemetryHttpServer(MCTelemetryForge.LOGGER, initialPayload, port);
         if (!httpServer.start()) {
             httpServer = null;
         }
-        ticksUntilRefresh = TELEMETRY_REFRESH_TICKS;
+        refreshIntervalTicks = Math.max(1, TelemetryConfig.telemetryRefreshTicks());
+        ticksUntilRefresh = refreshIntervalTicks;
     }
 
     @SubscribeEvent
@@ -55,7 +56,7 @@ public class TelemetryServerHooks {
             return;
         }
 
-        ticksUntilRefresh = TELEMETRY_REFRESH_TICKS;
+        ticksUntilRefresh = refreshIntervalTicks;
         httpServer.updateTelemetry(buildPayload(event.getServer()));
     }
 

@@ -27,7 +27,7 @@ class TelemetryHttpServer {
     private HttpServer server;
 
     TelemetryHttpServer(Logger logger, String initialTelemetry) {
-        this(logger, initialTelemetry, resolvePort());
+        this(logger, initialTelemetry, resolvePort(DEFAULT_PORT));
     }
 
     TelemetryHttpServer(Logger logger, String initialTelemetry, int port) {
@@ -36,22 +36,24 @@ class TelemetryHttpServer {
         this.port = port > 0 ? port : DEFAULT_PORT;
     }
 
-    static int resolvePort() {
+    static int resolvePort(int configuredPort) {
         String property = System.getProperty("MCTELEMETRY_PORT");
         if (property == null || property.isBlank()) {
-            return DEFAULT_PORT;
+            return validatePort(configuredPort) ? configuredPort : DEFAULT_PORT;
         }
 
         try {
             int parsed = Integer.parseInt(property.trim());
-            if (parsed > 0 && parsed <= 65535) {
-                return parsed;
-            }
+            return validatePort(parsed) ? parsed : DEFAULT_PORT;
         } catch (NumberFormatException ignored) {
             // fall through to default
         }
 
         return DEFAULT_PORT;
+    }
+
+    private static boolean validatePort(int candidate) {
+        return candidate > 0 && candidate <= 65535;
     }
 
     boolean start() {
