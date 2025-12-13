@@ -32,7 +32,7 @@ public class TelemetryCommandForge {
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildCommand() {
         return Commands.literal("telemetry")
-                .requires(source -> true)
+                .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("json")
                         .then(Commands.argument("nonce", StringArgumentType.word())
                                 .executes(context -> {
