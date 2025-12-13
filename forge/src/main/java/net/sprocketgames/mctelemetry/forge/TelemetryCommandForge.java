@@ -6,6 +6,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -13,11 +14,15 @@ import net.minecraftforge.fml.common.Mod;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetryPayload;
 import com.mojang.logging.LogUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.List;
 
 @Mod.EventBusSubscriber(modid = MCTelemetryForge.MOD_ID)
 public class TelemetryCommandForge {
+    private static final Logger SERVER_LOGGER = LogManager.getLogger(MinecraftServer.class);
+
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(buildCommand());
@@ -36,11 +41,12 @@ public class TelemetryCommandForge {
 
                                     MCTelemetryForge.LOGGER.info(payload);
                                     LogUtils.getLogger().info(payload);
+                                    SERVER_LOGGER.info(payload);
                                     System.out.println(payload);
                                     source.getServer().sendSystemMessage(Component.literal(payload));
-                                    source.sendSuccess(() -> Component.literal(payload), false);
+                                    source.sendSuccess(() -> Component.literal(payload), true);
                                     return 1;
-                                }))); 
+                                })));
     }
 
     private static String buildJson(CommandSourceStack source) {
