@@ -35,4 +35,13 @@ class TelemetryPayloadTest {
         assertEquals(50.0, root.get("mspt").getAsDouble());
         assertEquals(20.0, root.get("tps").getAsDouble());
     }
+
+    @Test
+    void payloadNullsOutNonFiniteMetrics() {
+        String payload = TelemetryPayload.build("1.20.1", "forge", Collections.emptyList(), Double.NaN, Double.POSITIVE_INFINITY);
+
+        JsonObject root = GSON.fromJson(payload, JsonObject.class);
+        assertTrue(root.get("mspt").isJsonNull(), "mspt should null out NaN values");
+        assertTrue(root.get("tps").isJsonNull(), "tps should null out infinite values");
+    }
 }
