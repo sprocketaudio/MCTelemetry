@@ -132,16 +132,26 @@ public class TelemetryCommandForge {
             List<ServerPlayer> onlinePlayers = source.getServer().getPlayerList().getPlayers();
             logEverywhere("Found " + onlinePlayers.size() + " online players to snapshot");
 
-            List<PlayerSnapshot> players = onlinePlayers.stream()
-                    .peek(player -> logEverywhere("Snapshotting player before conversion: " + player.getGameProfile()))
-                    .map(TelemetryCommandForge::toSnapshot)
-                    .toList();
+            List<PlayerSnapshot> players = new java.util.ArrayList<>();
+
+            for (ServerPlayer player : onlinePlayers) {
+                logEverywhere("Snapshotting player before conversion: " + player.getGameProfile());
+                try {
+                    PlayerSnapshot snapshot = toSnapshot(player);
+                    logEverywhere("Snapshot created for player: " + snapshot.name() + " (" + snapshot.uuid() + ")");
+                    players.add(snapshot);
+                } catch (Exception e) {
+                    logErrorEverywhere("Failed to snapshot player: " + player.getGameProfile(), e);
+                    throw e;
+                }
+            }
 
             logEverywhere("Collected " + players.size() + " player snapshots for telemetry");
 
             String mcVersion = currentMinecraftVersion();
             logEverywhere("Using Minecraft version " + mcVersion + " and loader " + MCTelemetryForge.LOADER + " for payload");
 
+            logEverywhere("Invoking TelemetryPayload.build with " + players.size() + " players");
             String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
             logEverywhere("Telemetry JSON payload built: " + payload);
 
