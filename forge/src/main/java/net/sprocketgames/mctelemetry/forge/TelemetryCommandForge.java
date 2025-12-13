@@ -26,9 +26,10 @@ public class TelemetryCommandForge {
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
-        logDetailed("Registering /telemetry command");
+        boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
+        logDetailed(detailedLogging, "Registering /telemetry command");
         event.getDispatcher().register(buildCommand());
-        logDetailed("/telemetry command registration complete");
+        logDetailed(detailedLogging, "/telemetry command registration complete");
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildCommand() {
@@ -39,16 +40,16 @@ public class TelemetryCommandForge {
                                 .executes(context -> {
                                     String nonce = StringArgumentType.getString(context, "nonce");
                                     CommandSourceStack source = context.getSource();
+                                    boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
 
-                                    logDetailed("/telemetry json invoked with nonce '{}'", nonce);
+                                    logDetailed(detailedLogging, "/telemetry json invoked with nonce '{}'", nonce);
 
                                     try {
-                                        String json = buildJson(source);
-                                        String payload = "TELEMETRY " + nonce + " " + json;
-                                        Component message = Component.literal(payload);
+                                        String json = buildJson(source, detailedLogging);
+                                        Component message = Component.literal(formatPayload(nonce, json));
 
-                                        broadcastPayload(source, message);
-                                        logDetailed("Telemetry payload broadcast for nonce '{}'", nonce);
+                                        broadcastPayload(source, message, detailedLogging);
+                                        logDetailed(detailedLogging, "Telemetry payload broadcast for nonce '{}'", nonce);
                                         return 1;
                                     } catch (Exception e) {
                                         LOGGER.error("Telemetry command failed for nonce '{}'", nonce, e);
@@ -57,69 +58,69 @@ public class TelemetryCommandForge {
                                 })));
     }
 
-    private static void broadcastPayload(CommandSourceStack source, Component message) {
+    private static void broadcastPayload(CommandSourceStack source, Component message, boolean detailedLogging) {
         source.getServer().sendSystemMessage(message);
-        logDetailed("Payload broadcast to console: {}", message.getString());
+        logDetailed(detailedLogging, "Payload broadcast to console: {}", message.getString());
     }
 
-    private static String buildJson(CommandSourceStack source) {
+    private static String buildJson(CommandSourceStack source, boolean detailedLogging) {
         String mcVersion = "unknown";
-        List<PlayerSnapshot> players = collectPlayerSnapshots(source);
+        List<PlayerSnapshot> players = collectPlayerSnapshots(source, detailedLogging);
 
         try {
             mcVersion = currentMinecraftVersion();
         } catch (Exception e) {
-            logDetailed("Failed to resolve Minecraft version; using fallback 'unknown'", e);
+            logDetailed(detailedLogging, "Failed to resolve Minecraft version; using fallback 'unknown'", e);
         }
 
         try {
-            return emitPayload(mcVersion, players);
+            return emitPayload(mcVersion, players, detailedLogging);
         } catch (Exception e) {
             LOGGER.error("Failed while assembling telemetry JSON; returning fallback payload", e);
-            return "{\"mc\":\"" + mcVersion + "\",\"loader\":\"" + MCTelemetryForge.LOADER + "\",\"players\":[]}";
+            return TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, Collections.emptyList());
         }
     }
 
-    private static String emitPayload(String mcVersion, List<PlayerSnapshot> players) {
+    private static String emitPayload(String mcVersion, List<PlayerSnapshot> players, boolean detailedLogging) {
         String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
-        logDetailed("Telemetry JSON payload built: {}", payload);
+        logDetailed(detailedLogging, "Telemetry JSON payload built: {}", payload);
         return payload;
     }
 
-    private static List<PlayerSnapshot> collectPlayerSnapshots(CommandSourceStack source) {
+    private static List<PlayerSnapshot> collectPlayerSnapshots(CommandSourceStack source, boolean detailedLogging) {
         List<PlayerSnapshot> players = new ArrayList<>();
 
         List<ServerPlayer> onlinePlayers = Collections.emptyList();
         try {
             onlinePlayers = source.getServer().getPlayerList().getPlayers();
         } catch (Exception e) {
-            logDetailed("Failed to fetch online players; proceeding with empty list", e);
+            logDetailed(detailedLogging, "Failed to fetch online players; proceeding with empty list", e);
         }
 
         if (onlinePlayers.isEmpty()) {
-            logDetailed("No online players detected; telemetry payload will contain an empty player list");
+            logDetailed(detailedLogging, "No online players detected; telemetry payload will contain an empty player list");
             return players;
         }
 
-        logDetailed("Snapshotting {} online player(s) for telemetry", onlinePlayers.size());
+        logDetailed(detailedLogging, "Snapshotting {} online player(s) for telemetry", onlinePlayers.size());
         for (ServerPlayer player : onlinePlayers) {
             try {
-                players.add(toSnapshot(player));
+                players.add(toSnapshot(player, detailedLogging));
             } catch (Exception e) {
-                logDetailed("Failed to snapshot player {}", player.getGameProfile(), e);
+                logDetailed(detailedLogging, "Failed to snapshot player {}", player.getGameProfile(), e);
             }
         }
 
         return players;
     }
 
-    private static PlayerSnapshot toSnapshot(ServerPlayer player) {
+    private static PlayerSnapshot toSnapshot(ServerPlayer player, boolean detailedLogging) {
         try {
             String name = player.getGameProfile().getName();
             String uuid = player.getGameProfile().getId().toString().replace("-", "");
             return new PlayerSnapshot(name, uuid);
         } catch (Throwable e) {
-            logDetailed("Error while converting player to snapshot: {}", player, e);
+            logDetailed(detailedLogging, "Error while converting player to snapshot: {}", player, e);
             String fallbackName;
             String fallbackUuid;
             try {
@@ -142,8 +143,12 @@ public class TelemetryCommandForge {
         return SharedConstants.getCurrentVersion().getName();
     }
 
-    private static void logDetailed(String message, Object... args) {
-        if (TelemetryConfig.detailedLoggingEnabled()) {
+    private static String formatPayload(String nonce, String json) {
+        return "TELEMETRY " + nonce + " " + json;
+    }
+
+    private static void logDetailed(boolean detailedLogging, String message, Object... args) {
+        if (detailedLogging) {
             LOGGER.info(message, args);
         }
     }
