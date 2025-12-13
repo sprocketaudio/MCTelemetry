@@ -2,6 +2,8 @@ package net.sprocketgames.mctelemetry.forge;
 
 import com.mojang.logging.LogUtils;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.config.ModConfig;
 import org.slf4j.Logger;
 
 @Mod(MCTelemetryForge.MOD_ID)
@@ -12,5 +14,6 @@ public class MCTelemetryForge {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public MCTelemetryForge() {
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, TelemetryConfig.SPEC);
     }
 }

@@ -12,6 +12,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetryPayload;
+import net.sprocketgames.mctelemetry.forge.TelemetryConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,9 +26,9 @@ public class TelemetryCommandForge {
 
     @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
-        LOGGER.info("Registering /telemetry command");
+        logDetailed("Registering /telemetry command");
         event.getDispatcher().register(buildCommand());
-        LOGGER.info("/telemetry command registration complete");
+        logDetailed("/telemetry command registration complete");
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildCommand() {
@@ -39,7 +40,7 @@ public class TelemetryCommandForge {
                                     String nonce = StringArgumentType.getString(context, "nonce");
                                     CommandSourceStack source = context.getSource();
 
-                                    LOGGER.info("/telemetry json invoked with nonce '{}'", nonce);
+                                    logDetailed("/telemetry json invoked with nonce '{}'", nonce);
 
                                     try {
                                         String json = buildJson(source);
@@ -47,7 +48,7 @@ public class TelemetryCommandForge {
                                         Component message = Component.literal(payload);
 
                                         broadcastPayload(source, message);
-                                        LOGGER.info("Telemetry payload broadcast for nonce '{}'", nonce);
+                                        logDetailed("Telemetry payload broadcast for nonce '{}'", nonce);
                                         return 1;
                                     } catch (Exception e) {
                                         LOGGER.error("Telemetry command failed for nonce '{}'", nonce, e);
@@ -58,7 +59,7 @@ public class TelemetryCommandForge {
 
     private static void broadcastPayload(CommandSourceStack source, Component message) {
         source.getServer().sendSystemMessage(message);
-        LOGGER.info("Payload broadcast to console: {}", message.getString());
+        logDetailed("Payload broadcast to console: {}", message.getString());
     }
 
     private static String buildJson(CommandSourceStack source) {
@@ -68,7 +69,7 @@ public class TelemetryCommandForge {
         try {
             mcVersion = currentMinecraftVersion();
         } catch (Exception e) {
-            LOGGER.warn("Failed to resolve Minecraft version; using fallback 'unknown'", e);
+            logDetailed("Failed to resolve Minecraft version; using fallback 'unknown'", e);
         }
 
         try {
@@ -92,20 +93,20 @@ public class TelemetryCommandForge {
         try {
             onlinePlayers = source.getServer().getPlayerList().getPlayers();
         } catch (Exception e) {
-            LOGGER.warn("Failed to fetch online players; proceeding with empty list", e);
+            logDetailed("Failed to fetch online players; proceeding with empty list", e);
         }
 
         if (onlinePlayers.isEmpty()) {
-            LOGGER.info("No online players detected; telemetry payload will contain an empty player list");
+            logDetailed("No online players detected; telemetry payload will contain an empty player list");
             return players;
         }
 
-        LOGGER.info("Snapshotting {} online player(s) for telemetry", onlinePlayers.size());
+        logDetailed("Snapshotting {} online player(s) for telemetry", onlinePlayers.size());
         for (ServerPlayer player : onlinePlayers) {
             try {
                 players.add(toSnapshot(player));
             } catch (Exception e) {
-                LOGGER.warn("Failed to snapshot player {}", player.getGameProfile(), e);
+                logDetailed("Failed to snapshot player {}", player.getGameProfile(), e);
             }
         }
 
@@ -118,7 +119,7 @@ public class TelemetryCommandForge {
             String uuid = player.getGameProfile().getId().toString().replace("-", "");
             return new PlayerSnapshot(name, uuid);
         } catch (Throwable e) {
-            LOGGER.warn("Error while converting player to snapshot: {}", player, e);
+            logDetailed("Error while converting player to snapshot: {}", player, e);
             String fallbackName;
             String fallbackUuid;
             try {
@@ -139,5 +140,11 @@ public class TelemetryCommandForge {
 
     private static String currentMinecraftVersion() {
         return SharedConstants.getCurrentVersion().getName();
+    }
+
+    private static void logDetailed(String message, Object... args) {
+        if (TelemetryConfig.detailedLoggingEnabled()) {
+            LOGGER.info(message, args);
+        }
     }
 }
