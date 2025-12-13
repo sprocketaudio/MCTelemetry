@@ -130,28 +130,36 @@ public class TelemetryCommandForge {
             logEverywhere("Collecting player snapshots from server: " + source.getServer());
 
             List<ServerPlayer> onlinePlayers = source.getServer().getPlayerList().getPlayers();
-            logEverywhere("Found " + onlinePlayers.size() + " online players to snapshot");
+            logEverywhere("Player list fetched; found " + onlinePlayers.size() + " online players to snapshot");
 
             List<PlayerSnapshot> players = new java.util.ArrayList<>();
 
-            for (ServerPlayer player : onlinePlayers) {
-                logEverywhere("Snapshotting player before conversion: " + player.getGameProfile());
+            for (int i = 0; i < onlinePlayers.size(); i++) {
+                ServerPlayer player = onlinePlayers.get(i);
+                logEverywhere("Snapshotting player before conversion (index " + i + "): " + player.getGameProfile());
                 try {
                     PlayerSnapshot snapshot = toSnapshot(player);
-                    logEverywhere("Snapshot created for player: " + snapshot.name() + " (" + snapshot.uuid() + ")");
                     players.add(snapshot);
+                    logEverywhere("Snapshot #" + i + " created for player: " + snapshot.name() + " (" + snapshot.uuid() + ")");
                 } catch (Exception e) {
-                    logErrorEverywhere("Failed to snapshot player: " + player.getGameProfile(), e);
+                    logErrorEverywhere("Failed to snapshot player (index " + i + "): " + player.getGameProfile(), e);
                     throw e;
                 }
             }
 
-            logEverywhere("Collected " + players.size() + " player snapshots for telemetry");
+            logEverywhere("Player snapshot loop complete; collected " + players.size() + " player snapshots for telemetry");
 
-            String mcVersion = currentMinecraftVersion();
-            logEverywhere("Using Minecraft version " + mcVersion + " and loader " + MCTelemetryForge.LOADER + " for payload");
+            String mcVersion;
+            try {
+                logEverywhere("Resolving current Minecraft version via SharedConstants");
+                mcVersion = currentMinecraftVersion();
+                logEverywhere("Minecraft version resolved as " + mcVersion);
+            } catch (Exception e) {
+                logErrorEverywhere("Failed to resolve Minecraft version", e);
+                throw e;
+            }
 
-            logEverywhere("Invoking TelemetryPayload.build with " + players.size() + " players");
+            logEverywhere("Preparing to invoke TelemetryPayload.build with loader=" + MCTelemetryForge.LOADER + " and " + players.size() + " players");
             String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
             logEverywhere("Telemetry JSON payload built: " + payload);
 
@@ -159,6 +167,9 @@ public class TelemetryCommandForge {
         } catch (Exception e) {
             logErrorEverywhere("Failed while assembling telemetry JSON", e);
             throw e;
+        } finally {
+            System.out.flush();
+            System.err.flush();
         }
     }
 
