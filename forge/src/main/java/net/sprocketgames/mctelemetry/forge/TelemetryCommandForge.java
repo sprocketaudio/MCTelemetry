@@ -39,14 +39,18 @@ public class TelemetryCommandForge {
                                     CommandSourceStack source = context.getSource();
                                     String payload = "TELEMETRY " + nonce + " " + json;
 
+                                    Component message = Component.literal(payload);
+
                                     MCTelemetryForge.LOGGER.info(payload);
                                     LogUtils.getLogger().info(payload);
                                     SERVER_LOGGER.info(payload);
                                     System.out.println(payload);
-                                    source.getServer().sendSystemMessage(Component.literal(payload));
-                                    source.sendSuccess(() -> Component.literal(payload), true);
+
+                                    source.getServer().sendSystemMessage(message);
+                                    source.sendSystemMessage(message);
+                                    source.sendSuccess(() -> message, true);
                                     return 1;
-                                })));
+                                }))); 
     }
 
     private static String buildJson(CommandSourceStack source) {
