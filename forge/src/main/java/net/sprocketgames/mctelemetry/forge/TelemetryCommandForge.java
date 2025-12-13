@@ -31,7 +31,6 @@ public class TelemetryCommandForge {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> buildCommand() {
-        LOGGER.info("Building /telemetry command tree");
         return Commands.literal("telemetry")
                 .requires(source -> true)
                 .then(Commands.literal("json")
@@ -41,7 +40,6 @@ public class TelemetryCommandForge {
                                     CommandSourceStack source = context.getSource();
 
                                     LOGGER.info("/telemetry json invoked with nonce '{}'", nonce);
-                                    source.sendSystemMessage(Component.literal("[MCTelemetry] Building telemetry payload..."));
 
                                     try {
                                         String json = buildJson(source);
@@ -53,42 +51,19 @@ public class TelemetryCommandForge {
                                         return 1;
                                     } catch (Exception e) {
                                         LOGGER.error("Telemetry command failed for nonce '{}'", nonce, e);
-                                        source.sendFailure(Component.literal("[MCTelemetry] Telemetry command failed: " + e.getMessage()));
                                         return 0;
                                     }
                                 })));
     }
 
     private static void broadcastPayload(CommandSourceStack source, Component message) {
-        source.getServer().getPlayerList().broadcastSystemMessage(message, false);
         source.getServer().sendSystemMessage(message);
-        source.sendSystemMessage(message);
-        source.sendSuccess(() -> message, true);
-        LOGGER.info("Payload broadcast: {}", message.getString());
+        LOGGER.info("Payload broadcast to console: {}", message.getString());
     }
 
     private static String buildJson(CommandSourceStack source) {
         String mcVersion = "unknown";
-        List<PlayerSnapshot> players = new ArrayList<>();
-
-        List<ServerPlayer> onlinePlayers = Collections.emptyList();
-        try {
-            onlinePlayers = source.getServer().getPlayerList().getPlayers();
-        } catch (Exception e) {
-            LOGGER.warn("Failed to fetch online players; proceeding with empty list", e);
-        }
-
-        for (ServerPlayer player : onlinePlayers) {
-            try {
-                players.add(toSnapshot(player));
-            } catch (Exception e) {
-                LOGGER.warn("Failed to snapshot player {}", player.getGameProfile(), e);
-            }
-        }
-
-        if (players.isEmpty()) {
-            LOGGER.info("No online players detected; telemetry payload will contain an empty player list");
-        }
+        List<PlayerSnapshot> players = collectPlayerSnapshots(source);
 
         try {
             mcVersion = currentMinecraftVersion();
@@ -108,6 +83,33 @@ public class TelemetryCommandForge {
         String payload = TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, players);
         LOGGER.info("Telemetry JSON payload built: {}", payload);
         return payload;
+    }
+
+    private static List<PlayerSnapshot> collectPlayerSnapshots(CommandSourceStack source) {
+        List<PlayerSnapshot> players = new ArrayList<>();
+
+        List<ServerPlayer> onlinePlayers = Collections.emptyList();
+        try {
+            onlinePlayers = source.getServer().getPlayerList().getPlayers();
+        } catch (Exception e) {
+            LOGGER.warn("Failed to fetch online players; proceeding with empty list", e);
+        }
+
+        if (onlinePlayers.isEmpty()) {
+            LOGGER.info("No online players detected; telemetry payload will contain an empty player list");
+            return players;
+        }
+
+        LOGGER.info("Snapshotting {} online player(s) for telemetry", onlinePlayers.size());
+        for (ServerPlayer player : onlinePlayers) {
+            try {
+                players.add(toSnapshot(player));
+            } catch (Exception e) {
+                LOGGER.warn("Failed to snapshot player {}", player.getGameProfile(), e);
+            }
+        }
+
+        return players;
     }
 
     private static PlayerSnapshot toSnapshot(ServerPlayer player) {
