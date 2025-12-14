@@ -2,7 +2,9 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    id 'net.neoforged.gradle' version '7.0.98'
+    // Allow the build to resolve the latest 7.0.x NeoForge Gradle plugin that is
+    // available in the configured plugin repositories.
+    id 'net.neoforged.gradle' version '7.0.+'
 }
 
 version = mod_version
