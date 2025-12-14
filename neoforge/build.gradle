@@ -31,12 +31,12 @@ runs {
 
     server {
         systemProperty 'forge.enabledGameTestNamespaces', mod_id
-        arguments '--nogui'
+        arguments.add '--nogui'
     }
 
     data {
         workingDirectory project.file('run-data')
-        arguments '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+        arguments.addAll('--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/'))
     }
 }
 
