@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.ModConfigSpec;
+import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
 @Mod(MCTelemetryNeoForge.MOD_ID)
@@ -15,6 +16,14 @@ public class MCTelemetryNeoForge {
 
     public MCTelemetryNeoForge() {
         registerConfigReflectively();
+        registerEventListeners();
+    }
+
+    private static void registerEventListeners() {
+        NeoForge.EVENT_BUS.addListener(TelemetryCommandNeoForge::registerCommands);
+        NeoForge.EVENT_BUS.addListener(TelemetryServerHooks::onServerStarted);
+        NeoForge.EVENT_BUS.addListener(TelemetryServerHooks::onServerStopping);
+        NeoForge.EVENT_BUS.addListener(TelemetryServerHooks::onServerTick);
     }
 
     private static void registerConfigReflectively() {

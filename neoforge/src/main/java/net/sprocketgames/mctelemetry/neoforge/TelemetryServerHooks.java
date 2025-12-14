@@ -3,9 +3,6 @@ package net.sprocketgames.mctelemetry.neoforge;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
@@ -18,14 +15,12 @@ import java.util.List;
 import java.util.OptionalDouble;
 import java.util.stream.Collectors;
 
-@EventBusSubscriber(modid = MCTelemetryNeoForge.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
 public class TelemetryServerHooks {
     private static final TelemetryService<MinecraftServer> TELEMETRY_SERVICE = new TelemetryService<>(
             MCTelemetryNeoForge.LOADER,
             MCTelemetryNeoForge.LOGGER,
             TelemetryServerHooks::asTelemetrySource);
 
-    @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
         if (!server.isDedicatedServer()) {
@@ -43,12 +38,10 @@ public class TelemetryServerHooks {
                 TelemetryConfigNeoForge.httpBindAddress());
     }
 
-    @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
         TELEMETRY_SERVICE.stop();
     }
 
-    @SubscribeEvent
     public static void onServerTick(ServerTickEvent event) {
         if (isEndPhase(event)) {
             TELEMETRY_SERVICE.tick(event.getServer(), TelemetryConfigNeoForge.detailedLoggingEnabled());

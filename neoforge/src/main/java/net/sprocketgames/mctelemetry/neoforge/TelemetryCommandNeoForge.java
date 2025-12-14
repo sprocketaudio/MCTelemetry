@@ -7,9 +7,6 @@ import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetryPayload;
@@ -20,11 +17,9 @@ import org.slf4j.Logger;
 import java.util.Collections;
 import java.util.List;
 
-@EventBusSubscriber(modid = MCTelemetryNeoForge.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
 public class TelemetryCommandNeoForge {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
         boolean detailedLogging = TelemetryConfigNeoForge.detailedLoggingEnabled();
         logDetailed(detailedLogging, "Registering /telemetry command");
