@@ -3,11 +3,12 @@ package net.sprocketgames.mctelemetry.neoforge;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.event.TickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.event.tick.TickEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
-import net.neoforged.neoforge.eventbus.api.SubscribeEvent;
-import net.neoforged.fml.common.Mod;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.server.TelemetryCollector;
 import net.sprocketgames.mctelemetry.common.server.TelemetryService;
@@ -17,7 +18,7 @@ import java.util.List;
 import java.util.OptionalDouble;
 import java.util.stream.Collectors;
 
-@Mod.EventBusSubscriber(modid = MCTelemetryNeoForge.MOD_ID, bus = Mod.EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = MCTelemetryNeoForge.MOD_ID, bus = EventBusSubscriber.Bus.GAME)
 public class TelemetryServerHooks {
     private static final TelemetryService<MinecraftServer> TELEMETRY_SERVICE = new TelemetryService<>(
             MCTelemetryNeoForge.LOADER,
@@ -54,17 +55,11 @@ public class TelemetryServerHooks {
         }
     }
 
-    private static TelemetryCollector.TelemetrySource asTelemetrySource(MinecraftServer server) {
+    static TelemetryCollector.TelemetrySource asTelemetrySource(MinecraftServer server) {
         return new TelemetryCollector.TelemetrySource() {
             @Override
             public OptionalDouble averageTickTimeMs() {
-                try {
-                    double averageMspt = server.getAverageTickTime();
-                    return Double.isNaN(averageMspt) || averageMspt <= 0.0 ? OptionalDouble.empty() : OptionalDouble.of(averageMspt);
-                } catch (Exception e) {
-                    MCTelemetryNeoForge.LOGGER.debug("Failed to read average tick time", e);
-                    return OptionalDouble.empty();
-                }
+                return TelemetryServerHooks.readAverageTickTime(server);
             }
 
             @Override
@@ -104,5 +99,36 @@ public class TelemetryServerHooks {
 
             return new PlayerSnapshot(fallbackName, fallbackUuid);
         }
+    }
+
+    private static OptionalDouble readAverageTickTime(MinecraftServer server) {
+        try {
+            var method = server.getClass().getMethod("getAverageTickTime");
+            Object result = method.invoke(server);
+            if (result instanceof Number number) {
+                double averageMspt = number.doubleValue();
+                return Double.isNaN(averageMspt) || averageMspt <= 0.0 ? OptionalDouble.empty() : OptionalDouble.of(averageMspt);
+            }
+        } catch (NoSuchMethodException ignored) {
+            // Fall through to nanos-based accessor below.
+        } catch (Exception e) {
+            MCTelemetryNeoForge.LOGGER.debug("Failed to read average tick time via getAverageTickTime", e);
+            return OptionalDouble.empty();
+        }
+
+        try {
+            var method = server.getClass().getMethod("getAverageTickTimeNanos");
+            Object result = method.invoke(server);
+            if (result instanceof Number number) {
+                double averageMspt = number.doubleValue() / 1_000_000.0d;
+                return Double.isNaN(averageMspt) || averageMspt <= 0.0 ? OptionalDouble.empty() : OptionalDouble.of(averageMspt);
+            }
+        } catch (NoSuchMethodException ignored) {
+            // No fallback available; return empty below.
+        } catch (Exception e) {
+            MCTelemetryNeoForge.LOGGER.debug("Failed to read average tick time via getAverageTickTimeNanos", e);
+        }
+
+        return OptionalDouble.empty();
     }
 }
