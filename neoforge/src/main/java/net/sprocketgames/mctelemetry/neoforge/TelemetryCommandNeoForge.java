@@ -13,6 +13,7 @@ import net.neoforged.fml.common.Mod;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetryPayload;
 import net.sprocketgames.mctelemetry.common.TelemetrySnapshot;
+import net.sprocketgames.mctelemetry.common.server.TelemetryCollector;
 import org.slf4j.Logger;
 
 import java.util.Collections;
@@ -72,7 +73,7 @@ public class TelemetryCommandNeoForge {
         }
 
         try {
-            TelemetrySnapshot snapshot = TelemetryCollector.collect(source, detailedLogging, LOGGER, mcVersion);
+            TelemetrySnapshot snapshot = TelemetryCollector.collect(source, detailedLogging, LOGGER, mcVersion, MCTelemetryNeoForge.LOADER);
             return emitPayload(snapshot, detailedLogging);
         } catch (Exception e) {
             LOGGER.error("Failed while assembling telemetry JSON; returning fallback payload", e);

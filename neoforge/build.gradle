@@ -2,7 +2,7 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    id 'net.neoforged.gradle' version '[7.0,7.1)'
+    id 'net.neoforged.gradle' version '7.0.98'
 }
 
 version = mod_version

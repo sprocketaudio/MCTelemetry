@@ -1,4 +1,4 @@
-package net.sprocketgames.mctelemetry.forge;
+package net.sprocketgames.mctelemetry.common.server;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
@@ -13,21 +13,21 @@ import java.util.List;
 import java.util.OptionalDouble;
 
 /**
- * Collects telemetry data from the running server for the Forge loader.
+ * Shared telemetry collection helpers used by Forge and NeoForge loaders.
  */
-class TelemetryCollector {
+public final class TelemetryCollector {
     private TelemetryCollector() {
     }
 
-    static TelemetrySnapshot collect(CommandSourceStack source, boolean detailedLogging, Logger logger, String mcVersion) {
-        return collect(source.getServer(), detailedLogging, logger, mcVersion);
+    public static TelemetrySnapshot collect(CommandSourceStack source, boolean detailedLogging, Logger logger, String mcVersion, String loaderId) {
+        return collect(source.getServer(), detailedLogging, logger, mcVersion, loaderId);
     }
 
-    static TelemetrySnapshot collect(MinecraftServer server, boolean detailedLogging, Logger logger, String mcVersion) {
+    public static TelemetrySnapshot collect(MinecraftServer server, boolean detailedLogging, Logger logger, String mcVersion, String loaderId) {
         List<PlayerSnapshot> players = collectPlayerSnapshots(server, detailedLogging, logger);
         TickMetrics metrics = readTickMetrics(server, detailedLogging, logger);
 
-        return TelemetrySnapshot.of(mcVersion, MCTelemetryForge.LOADER, players, metrics.mspt(), metrics.tps());
+        return TelemetrySnapshot.of(mcVersion, loaderId, players, metrics.mspt(), metrics.tps());
     }
 
     private static TickMetrics readTickMetrics(MinecraftServer server, boolean detailedLogging, Logger logger) {
@@ -108,10 +108,6 @@ class TelemetryCollector {
         }
     }
 
-    private static double nanosToMillis(long nanos) {
-        return nanos / 1_000_000.0;
-    }
-
     private static double roundToTenth(double value) {
         return Math.round(value * 10.0) / 10.0;
     }
@@ -125,6 +121,14 @@ class TelemetryCollector {
     private record TickMetrics(Double mspt, Double tps) {
         static TickMetrics empty() {
             return new TickMetrics(null, null);
+        }
+
+        Double mspt() {
+            return mspt;
+        }
+
+        Double tps() {
+            return tps;
         }
     }
 }
