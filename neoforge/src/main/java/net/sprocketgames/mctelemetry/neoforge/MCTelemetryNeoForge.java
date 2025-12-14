@@ -1,6 +1,7 @@
 package net.sprocketgames.mctelemetry.neoforge;
 
 import com.mojang.logging.LogUtils;
+import com.electronwill.nightconfig.core.CommentedConfig;
 import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.electronwill.nightconfig.core.io.WritingMode;
 import net.neoforged.fml.common.Mod;
@@ -59,12 +60,46 @@ public class MCTelemetryNeoForge {
                 .writingMode(WritingMode.REPLACE)
                 .build()) {
             config.load();
-            TelemetryConfigNeoForge.SPEC.setConfig(config);
+            if (!bindSpecToConfig(TelemetryConfigNeoForge.SPEC, config)) {
+                writeDefaultsManually(config);
+            }
             config.save();
             LOGGER.info("Created telemetry config at {}", configPath);
         } catch (Exception ex) {
             LOGGER.error("Failed to create telemetry config file at " + configPath, ex);
         }
+    }
+
+    private static boolean bindSpecToConfig(ModConfigSpec spec, CommentedFileConfig config) {
+        Object[][] attempts = new Object[][] {
+                {"setConfig", new Class<?>[] {CommentedConfig.class}},
+                {"correct", new Class<?>[] {CommentedConfig.class}},
+                {"acceptConfig", new Class<?>[] {CommentedConfig.class}}
+        };
+
+        for (Object[] attempt : attempts) {
+            String methodName = (String) attempt[0];
+            Class<?>[] parameterTypes = (Class<?>[]) attempt[1];
+
+            try {
+                var method = spec.getClass().getMethod(methodName, parameterTypes);
+                method.invoke(spec, config);
+                return true;
+            } catch (NoSuchMethodException ignored) {
+                // Try next overload
+            } catch (Exception e) {
+                LOGGER.warn("Failed to bind telemetry config spec via {}: {}", methodName, e.getMessage());
+            }
+        }
+
+        return false;
+    }
+
+    private static void writeDefaultsManually(CommentedFileConfig config) {
+        config.set("detailedLogging", TelemetryConfigNeoForge.DETAILED_LOGGING.getDefault());
+        config.set("httpPort", TelemetryConfigNeoForge.HTTP_PORT.getDefault());
+        config.set("httpBindAddress", TelemetryConfigNeoForge.HTTP_BIND_ADDRESS.getDefault());
+        config.set("telemetryRefreshTicks", TelemetryConfigNeoForge.TELEMETRY_REFRESH_TICKS.getDefault());
     }
 
     private static boolean tryRegisterConfig(Object target, Class<?> targetClass, ModConfigSpec spec) throws Exception {
