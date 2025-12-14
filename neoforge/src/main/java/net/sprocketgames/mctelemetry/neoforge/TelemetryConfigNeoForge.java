@@ -7,6 +7,7 @@ public class TelemetryConfigNeoForge {
     private static final int DEFAULT_HTTP_PORT = 8765;
     private static final String DEFAULT_HTTP_BIND_ADDRESS = "127.0.0.1";
     private static final int DEFAULT_REFRESH_TICKS = 200;
+    private static boolean detailedLoggingFallbackLogged = false;
 
     public static final ModConfigSpec.BooleanValue DETAILED_LOGGING = BUILDER
             .comment("Enable detailed telemetry command logging for debugging. When false, only the payload is logged.")
@@ -38,7 +39,10 @@ public class TelemetryConfigNeoForge {
         try {
             return DETAILED_LOGGING.get();
         } catch (IllegalStateException e) {
-            MCTelemetryNeoForge.LOGGER.debug("Detailed logging config not yet loaded; defaulting to false");
+            if (!detailedLoggingFallbackLogged) {
+                detailedLoggingFallbackLogged = true;
+                MCTelemetryNeoForge.LOGGER.debug("Detailed logging config not yet loaded; defaulting to false");
+            }
             return false;
         }
     }
