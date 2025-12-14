@@ -2,9 +2,8 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'maven-publish'
-    // Pin to a known NeoForge Gradle plugin release to avoid repository resolution
-    // failures when dynamic ranges are not supported.
-    id 'net.neoforged.gradle' version "${neoforge_gradle_plugin_version}"
+    // Use the NeoGradle userdev plugin for NeoForge mod development.
+    id 'net.neoforged.gradle.userdev' version "${neoforge_gradle_plugin_version}"
 }
 
 version = mod_version
