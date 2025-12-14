@@ -25,20 +25,17 @@ runs {
     }
 
     client {
-        runType 'client'
         systemProperty 'forge.enabledGameTestNamespaces', mod_id
     }
 
     server {
-        runType 'server'
         systemProperty 'forge.enabledGameTestNamespaces', mod_id
-        arguments '--nogui'
+        args '--nogui'
     }
 
     data {
-        runType 'data'
         workingDirectory project.file('run-data')
-        arguments '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+        args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
     }
 }
 
