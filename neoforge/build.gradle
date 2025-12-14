@@ -63,6 +63,7 @@ tasks.named('processResources', ProcessResources).configure {
     var replaceProperties = [
             minecraft_version       : neoforge_minecraft_version,
             minecraft_version_range : neoforge_minecraft_version_range,
+            neoforge_minecraft_version: neoforge_minecraft_version,
             neoforge_version        : neoforge_version,
             neoforge_version_range  : neoforge_version_range,
             loader_version_range    : neoforge_loader_version_range,
