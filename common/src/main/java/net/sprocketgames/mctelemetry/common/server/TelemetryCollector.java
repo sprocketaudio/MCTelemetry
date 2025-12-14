@@ -1,15 +1,12 @@
 package net.sprocketgames.mctelemetry.common.server;
 
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetrySnapshot;
 import org.slf4j.Logger;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.OptionalDouble;
 
 /**
@@ -19,92 +16,47 @@ public final class TelemetryCollector {
     private TelemetryCollector() {
     }
 
-    public static TelemetrySnapshot collect(CommandSourceStack source, boolean detailedLogging, Logger logger, String mcVersion, String loaderId) {
-        return collect(source.getServer(), detailedLogging, logger, mcVersion, loaderId);
-    }
+    public static TelemetrySnapshot collect(TelemetrySource source, boolean detailedLogging, Logger logger, String mcVersion,
+                                            String loaderId) {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(logger, "logger");
 
-    public static TelemetrySnapshot collect(MinecraftServer server, boolean detailedLogging, Logger logger, String mcVersion, String loaderId) {
-        List<PlayerSnapshot> players = collectPlayerSnapshots(server, detailedLogging, logger);
-        TickMetrics metrics = readTickMetrics(server, detailedLogging, logger);
+        List<PlayerSnapshot> players = safePlayers(source, detailedLogging, logger);
+        TickMetrics metrics = readTickMetrics(source, detailedLogging, logger);
 
         return TelemetrySnapshot.of(mcVersion, loaderId, players, metrics.mspt(), metrics.tps());
     }
 
-    private static TickMetrics readTickMetrics(MinecraftServer server, boolean detailedLogging, Logger logger) {
-        OptionalDouble averageMspt = averageTickTimeMs(server, detailedLogging, logger);
-        if (averageMspt.isEmpty()) {
-            return TickMetrics.empty();
-        }
-
-        double mspt = roundToTenth(averageMspt.getAsDouble());
-        double tps = mspt > 0 ? roundToTenth(Math.min(20.0, 1000.0 / mspt)) : 20.0;
-        return new TickMetrics(mspt, tps);
-    }
-
-    private static OptionalDouble averageTickTimeMs(MinecraftServer server, boolean detailedLogging, Logger logger) {
+    private static List<PlayerSnapshot> safePlayers(TelemetrySource source, boolean detailedLogging, Logger logger) {
         try {
-            double averageMspt = server.getAverageTickTime();
-            if (Double.isNaN(averageMspt) || averageMspt <= 0.0) {
-                logDetailed(detailedLogging, logger, "Average tick time unavailable or invalid; mspt/tps will be null");
-                return OptionalDouble.empty();
+            List<PlayerSnapshot> players = source.onlinePlayers();
+            if (players == null || players.isEmpty()) {
+                logDetailed(detailedLogging, logger, "No online players detected; telemetry payload will contain an empty player list");
+                return Collections.emptyList();
             }
 
-            return OptionalDouble.of(averageMspt);
-        } catch (Exception e) {
-            logDetailed(detailedLogging, logger, "Failed reading tick timing data", e);
-            return OptionalDouble.empty();
-        }
-    }
-
-    private static List<PlayerSnapshot> collectPlayerSnapshots(MinecraftServer server, boolean detailedLogging, Logger logger) {
-        List<PlayerSnapshot> players = new ArrayList<>();
-
-        List<ServerPlayer> onlinePlayers = Collections.emptyList();
-        try {
-            onlinePlayers = server.getPlayerList().getPlayers();
+            logDetailed(detailedLogging, logger, "Snapshotting {} online player(s) for telemetry", players.size());
+            return List.copyOf(players);
         } catch (Exception e) {
             logDetailed(detailedLogging, logger, "Failed to fetch online players; proceeding with empty list", e);
+            return Collections.emptyList();
         }
-
-        if (onlinePlayers.isEmpty()) {
-            logDetailed(detailedLogging, logger, "No online players detected; telemetry payload will contain an empty player list");
-            return players;
-        }
-
-        logDetailed(detailedLogging, logger, "Snapshotting {} online player(s) for telemetry", onlinePlayers.size());
-        for (ServerPlayer player : onlinePlayers) {
-            try {
-                players.add(toSnapshot(player, detailedLogging, logger));
-            } catch (Exception e) {
-                logDetailed(detailedLogging, logger, "Failed to snapshot player {}", player.getGameProfile(), e);
-            }
-        }
-
-        return players;
     }
 
-    private static PlayerSnapshot toSnapshot(ServerPlayer player, boolean detailedLogging, Logger logger) {
+    private static TickMetrics readTickMetrics(TelemetrySource source, boolean detailedLogging, Logger logger) {
         try {
-            String name = player.getGameProfile().getName();
-            String uuid = player.getGameProfile().getId().toString().replace("-", "");
-            return new PlayerSnapshot(name, uuid);
-        } catch (Throwable e) {
-            logDetailed(detailedLogging, logger, "Error while converting player to snapshot: {}", player, e);
-            String fallbackName;
-            String fallbackUuid;
-            try {
-                fallbackName = player.getGameProfile().getName();
-            } catch (Exception ignored) {
-                fallbackName = "unknown";
+            OptionalDouble averageMspt = source.averageTickTimeMs();
+            if (averageMspt == null || averageMspt.isEmpty()) {
+                logDetailed(detailedLogging, logger, "Average tick time unavailable or invalid; mspt/tps will be null");
+                return TickMetrics.empty();
             }
 
-            try {
-                fallbackUuid = player.getGameProfile().getId() == null ? "" : player.getGameProfile().getId().toString().replace("-", "");
-            } catch (Exception ignored) {
-                fallbackUuid = "";
-            }
-
-            return new PlayerSnapshot(fallbackName, fallbackUuid);
+            double mspt = roundToTenth(averageMspt.getAsDouble());
+            double tps = mspt > 0 ? roundToTenth(Math.min(20.0, 1000.0 / mspt)) : 20.0;
+            return new TickMetrics(mspt, tps);
+        } catch (Exception e) {
+            logDetailed(detailedLogging, logger, "Failed reading tick timing data", e);
+            return TickMetrics.empty();
         }
     }
 
@@ -118,17 +70,15 @@ public final class TelemetryCollector {
         }
     }
 
+    public interface TelemetrySource {
+        OptionalDouble averageTickTimeMs();
+
+        List<PlayerSnapshot> onlinePlayers();
+    }
+
     private record TickMetrics(Double mspt, Double tps) {
         static TickMetrics empty() {
             return new TickMetrics(null, null);
-        }
-
-        Double mspt() {
-            return mspt;
-        }
-
-        Double tps() {
-            return tps;
         }
     }
 }

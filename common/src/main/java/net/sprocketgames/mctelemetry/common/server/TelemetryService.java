@@ -1,33 +1,34 @@
 package net.sprocketgames.mctelemetry.common.server;
 
-import net.minecraft.SharedConstants;
-import net.minecraft.server.MinecraftServer;
 import net.sprocketgames.mctelemetry.common.TelemetryPayload;
 import net.sprocketgames.mctelemetry.common.TelemetrySnapshot;
 import org.slf4j.Logger;
 
 import java.util.Collections;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * Loader-agnostic helper that owns the lifecycle of the telemetry HTTP server and cached payload.
  */
-public class TelemetryService {
+public class TelemetryService<S> {
     private final String loaderId;
     private final Logger logger;
+    private final Function<S, TelemetryCollector.TelemetrySource> telemetrySourceFactory;
 
     private TelemetryHttpServer httpServer;
     private int refreshIntervalTicks;
     private int ticksUntilRefresh;
-    private String minecraftVersion = SharedConstants.getCurrentVersion().getName();
+    private String minecraftVersion;
 
-    public TelemetryService(String loaderId, Logger logger) {
+    public TelemetryService(String loaderId, Logger logger, Function<S, TelemetryCollector.TelemetrySource> telemetrySourceFactory) {
         this.loaderId = Objects.requireNonNull(loaderId, "loaderId");
         this.logger = Objects.requireNonNull(logger, "logger");
+        this.telemetrySourceFactory = Objects.requireNonNull(telemetrySourceFactory, "telemetrySourceFactory");
     }
 
-    public boolean start(MinecraftServer server, boolean detailedLogging, int configuredRefreshTicks, int configuredPort, String configuredBindAddress) {
-        minecraftVersion = SharedConstants.getCurrentVersion().getName();
+    public boolean start(S server, String minecraftVersion, boolean detailedLogging, int configuredRefreshTicks, int configuredPort, String configuredBindAddress) {
+        this.minecraftVersion = Objects.requireNonNull(minecraftVersion, "minecraftVersion");
         refreshIntervalTicks = Math.max(1, configuredRefreshTicks);
         ticksUntilRefresh = refreshIntervalTicks;
 
@@ -60,7 +61,7 @@ public class TelemetryService {
         }
     }
 
-    public void tick(MinecraftServer server, boolean detailedLogging) {
+    public void tick(S server, boolean detailedLogging) {
         if (httpServer == null) {
             return;
         }
@@ -76,9 +77,9 @@ public class TelemetryService {
         logCachedUpdate(detailedLogging, payload);
     }
 
-    private String buildPayload(MinecraftServer server, boolean detailedLogging) {
+    private String buildPayload(S server, boolean detailedLogging) {
         try {
-            TelemetrySnapshot snapshot = TelemetryCollector.collect(server, detailedLogging, logger, minecraftVersion, loaderId);
+            TelemetrySnapshot snapshot = TelemetryCollector.collect(telemetrySourceFactory.apply(server), detailedLogging, logger, minecraftVersion, loaderId);
             return TelemetryPayload.build(snapshot);
         } catch (Exception e) {
             logger.warn("Failed to refresh telemetry payload; using fallback", e);
