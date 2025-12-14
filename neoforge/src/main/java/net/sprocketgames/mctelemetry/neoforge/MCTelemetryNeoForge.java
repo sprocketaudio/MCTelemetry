@@ -28,6 +28,46 @@ public class MCTelemetryNeoForge {
     }
 
     private static void registerConfig() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, TelemetryConfigNeoForge.SPEC);
+        try {
+            var context = ModLoadingContext.get();
+
+            if (tryRegisterConfig(context, context.getClass(), TelemetryConfigNeoForge.SPEC)) {
+                return;
+            }
+
+            var container = context.getActiveContainer();
+            if (container != null && tryRegisterConfig(container, container.getClass(), TelemetryConfigNeoForge.SPEC)) {
+                return;
+            }
+
+            LOGGER.error("Failed to register telemetry config for NeoForge: no compatible registerConfig overload found");
+        } catch (Exception e) {
+            LOGGER.error("Failed to register telemetry config for NeoForge", e);
+        }
+    }
+
+    private static boolean tryRegisterConfig(Object target, Class<?> targetClass, ModConfigSpec spec) throws Exception {
+        Object[][] attempts = new Object[][] {
+                {new Class<?>[] {ModConfig.Type.class, ModConfigSpec.class, String.class}, new Object[] {ModConfig.Type.COMMON, spec, MOD_ID + "-common.toml"}},
+                {new Class<?>[] {ModConfig.Type.class, ModConfigSpec.class}, new Object[] {ModConfig.Type.COMMON, spec}},
+                {new Class<?>[] {ModConfigSpec.class, ModConfig.Type.class}, new Object[] {spec, ModConfig.Type.COMMON}},
+                {new Class<?>[] {ModConfigSpec.class, String.class}, new Object[] {spec, MOD_ID + "-common.toml"}},
+                {new Class<?>[] {ModConfigSpec.class}, new Object[] {spec}}
+        };
+
+        for (Object[] attempt : attempts) {
+            Class<?>[] parameterTypes = (Class<?>[]) attempt[0];
+            Object[] args = (Object[]) attempt[1];
+
+            try {
+                var method = targetClass.getMethod("registerConfig", parameterTypes);
+                method.invoke(target, args);
+                return true;
+            } catch (NoSuchMethodException ignored) {
+                // Try next overload
+            }
+        }
+
+        return false;
     }
 }
