@@ -1,0 +1,114 @@
+plugins {
+    id 'eclipse'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.neoforged.gradle' version '[7.0,7.1)'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = "${mod_id}-neoforge"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = neoforge_version
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            systemProperty 'forge.logging.markers', 'REGISTRIES'
+            systemProperty 'forge.logging.console.level', 'debug'
+            mods {
+                "${mod_id}" {
+                    source sourceSets.main
+                    source project(':common').sourceSets.main
+                }
+            }
+        }
+
+        client {
+            systemProperty 'forge.enabledGameTestNamespaces', mod_id
+        }
+
+        server {
+            systemProperty 'forge.enabledGameTestNamespaces', mod_id
+            programArguments '--nogui'
+        }
+
+        data {
+            workingDirectory project.file('run-data')
+            programArguments '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+sourceSets {
+    main {
+        compileClasspath += project(':common').sourceSets.main.output
+        runtimeClasspath += project(':common').sourceSets.main.output
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url 'https://maven.neoforged.net/releases' }
+}
+
+dependencies {
+    neoForge "net.neoforged:neoforge:${neoforge_version}"
+    implementation project(':common')
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            minecraft_version       : neoforge_minecraft_version,
+            minecraft_version_range : neoforge_minecraft_version_range,
+            neoforge_version        : neoforge_version,
+            neoforge_version_range  : neoforge_version_range,
+            loader_version_range    : neoforge_loader_version_range,
+            mod_id                  : mod_id,
+            mod_name                : mod_name,
+            mod_license             : mod_license,
+            mod_version             : mod_version,
+            mod_authors             : mod_authors,
+            mod_description         : mod_description,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    from project(':common').sourceSets.main.output
+    manifest {
+        attributes([
+                'Specification-Title'     : mod_id,
+                'Specification-Vendor'    : mod_authors,
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : project.name,
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : mod_authors,
+                'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifact jar
+        }
+    }
+    repositories {
+        maven {
+            url "file://${project.projectDir}/mcmodsrepo"
+        }
+    }
+}

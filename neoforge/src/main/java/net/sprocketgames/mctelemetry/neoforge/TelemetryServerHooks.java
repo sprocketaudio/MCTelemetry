@@ -1,22 +1,22 @@
-package net.sprocketgames.mctelemetry.forge;
+package net.sprocketgames.mctelemetry.neoforge;
 
 import net.minecraft.SharedConstants;
 import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.TickEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.eventbus.api.SubscribeEvent;
+import net.neoforged.fml.common.Mod;
 import net.sprocketgames.mctelemetry.common.TelemetryPayload;
 import net.sprocketgames.mctelemetry.common.TelemetrySnapshot;
 import net.sprocketgames.mctelemetry.common.server.TelemetryHttpServer;
 
 import java.util.Collections;
 
-@Mod.EventBusSubscriber(modid = MCTelemetryForge.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(modid = MCTelemetryNeoForge.MOD_ID, bus = Mod.EventBusSubscriber.Bus.GAME)
 public class TelemetryServerHooks {
     private static TelemetryHttpServer httpServer;
-    private static int refreshIntervalTicks = TelemetryConfig.telemetryRefreshTicks();
+    private static int refreshIntervalTicks = TelemetryConfigNeoForge.telemetryRefreshTicks();
     private static int ticksUntilRefresh = refreshIntervalTicks;
     private static String minecraftVersion = SharedConstants.getCurrentVersion().getName();
 
@@ -24,34 +24,34 @@ public class TelemetryServerHooks {
     public static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
         if (!server.isDedicatedServer()) {
-            MCTelemetryForge.LOGGER.info("Skipping telemetry HTTP endpoint; server is not dedicated.");
+            MCTelemetryNeoForge.LOGGER.info("Skipping telemetry HTTP endpoint; server is not dedicated.");
             return;
         }
 
         minecraftVersion = SharedConstants.getCurrentVersion().getName();
-        refreshIntervalTicks = Math.max(1, TelemetryConfig.telemetryRefreshTicks());
+        refreshIntervalTicks = Math.max(1, TelemetryConfigNeoForge.telemetryRefreshTicks());
         ticksUntilRefresh = refreshIntervalTicks;
 
-        boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
+        boolean detailedLogging = TelemetryConfigNeoForge.detailedLoggingEnabled();
         String initialPayload = buildPayload(server, detailedLogging);
-        int port = TelemetryHttpServer.resolvePort(TelemetryConfig.httpPort());
+        int port = TelemetryHttpServer.resolvePort(TelemetryConfigNeoForge.httpPort());
         try {
             httpServer = new TelemetryHttpServer(
-                    MCTelemetryForge.LOGGER,
+                    MCTelemetryNeoForge.LOGGER,
                     initialPayload,
                     port,
-                    TelemetryConfig.httpBindAddress());
+                    TelemetryConfigNeoForge.httpBindAddress());
             if (!httpServer.start()) {
                 httpServer = null;
                 return;
             }
         } catch (IllegalArgumentException e) {
-            MCTelemetryForge.LOGGER.error("Failed to configure telemetry HTTP endpoint: {}", e.getMessage());
+            MCTelemetryNeoForge.LOGGER.error("Failed to configure telemetry HTTP endpoint: {}", e.getMessage());
             httpServer = null;
             return;
         }
 
-        MCTelemetryForge.LOGGER.info(
+        MCTelemetryNeoForge.LOGGER.info(
                 "MCTelemetry HTTP endpoint active on {}:{} (interval: {} ticks)",
                 httpServer.bindAddress(),
                 port,
@@ -78,7 +78,7 @@ public class TelemetryServerHooks {
 
         ticksUntilRefresh = refreshIntervalTicks;
 
-        boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
+        boolean detailedLogging = TelemetryConfigNeoForge.detailedLoggingEnabled();
         String payload = buildPayload(event.getServer(), detailedLogging);
         httpServer.updateTelemetry(payload);
         logCachedUpdate(detailedLogging, payload);
@@ -86,11 +86,11 @@ public class TelemetryServerHooks {
 
     private static String buildPayload(MinecraftServer server, boolean detailedLogging) {
         try {
-            TelemetrySnapshot snapshot = TelemetryCollector.collect(server, detailedLogging, MCTelemetryForge.LOGGER, minecraftVersion);
+            TelemetrySnapshot snapshot = TelemetryCollector.collect(server, detailedLogging, MCTelemetryNeoForge.LOGGER, minecraftVersion);
             return TelemetryPayload.build(snapshot);
         } catch (Exception e) {
-            MCTelemetryForge.LOGGER.warn("Failed to refresh telemetry payload; using fallback", e);
-            return TelemetryPayload.build(minecraftVersion, MCTelemetryForge.LOADER, Collections.emptyList());
+            MCTelemetryNeoForge.LOGGER.warn("Failed to refresh telemetry payload; using fallback", e);
+            return TelemetryPayload.build(minecraftVersion, MCTelemetryNeoForge.LOADER, Collections.emptyList());
         }
     }
 
@@ -100,6 +100,6 @@ public class TelemetryServerHooks {
         }
 
         int length = payload == null ? 0 : payload.length();
-        MCTelemetryForge.LOGGER.info("Cached telemetry JSON refreshed ({} chars)", length);
+        MCTelemetryNeoForge.LOGGER.info("Cached telemetry JSON refreshed ({} chars)", length);
     }
 }
