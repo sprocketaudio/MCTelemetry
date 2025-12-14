@@ -1,9 +1,14 @@
 package net.sprocketgames.mctelemetry.neoforge;
 
 import com.mojang.logging.LogUtils;
+import com.electronwill.nightconfig.core.CommentedConfig;
+import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import com.electronwill.nightconfig.core.io.WritingMode;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.fml.config.ModConfig;
-import net.neoforged.neoforge.common.config.ModConfigSpec;
+import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 
@@ -15,7 +20,7 @@ public class MCTelemetryNeoForge {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public MCTelemetryNeoForge() {
-        registerConfigReflectively();
+        registerConfig();
         registerEventListeners();
     }
 
@@ -26,32 +31,99 @@ public class MCTelemetryNeoForge {
         NeoForge.EVENT_BUS.addListener(TelemetryServerHooks::onServerTick);
     }
 
-    private static void registerConfigReflectively() {
+    private static void registerConfig() {
         try {
-            Class<?> contextClass = Class.forName("net.neoforged.fml.ModLoadingContext");
-            Object context = contextClass.getMethod("get").invoke(null);
+            var context = ModLoadingContext.get();
 
-            try {
-                var register = contextClass.getMethod("registerConfig", ModConfig.Type.class, ModConfigSpec.class);
-                register.invoke(context, ModConfig.Type.COMMON, TelemetryConfigNeoForge.SPEC);
+            if (tryRegisterConfig(context, context.getClass(), TelemetryConfigNeoForge.SPEC)) {
                 return;
-            } catch (NoSuchMethodException ignored) {
-                // Fall through to container-based registration.
             }
 
-            Object container = contextClass.getMethod("getActiveContainer").invoke(context);
-            Class<?> containerClass = Class.forName("net.neoforged.fml.ModContainer");
-            try {
-                var register = containerClass.getMethod("registerConfig", ModConfig.Type.class, ModConfigSpec.class);
-                register.invoke(container, ModConfig.Type.COMMON, TelemetryConfigNeoForge.SPEC);
-                return;
-            } catch (NoSuchMethodException ignored) {
-                var register = containerClass.getMethod("registerConfig", ModConfigSpec.class);
-                register.invoke(container, TelemetryConfigNeoForge.SPEC);
+            var container = context.getActiveContainer();
+            if (container != null && tryRegisterConfig(container, container.getClass(), TelemetryConfigNeoForge.SPEC)) {
                 return;
             }
+
+            LOGGER.error("Failed to register telemetry config for NeoForge: no compatible registerConfig overload found; manually creating config");
+            createConfigFile();
         } catch (Exception e) {
             LOGGER.error("Failed to register telemetry config for NeoForge", e);
+            createConfigFile();
         }
+    }
+
+    private static void createConfigFile() {
+        var configPath = FMLPaths.CONFIGDIR.get().resolve(MOD_ID + "-common.toml");
+        try (var config = CommentedFileConfig.builder(configPath)
+                .sync()
+                .autosave()
+                .writingMode(WritingMode.REPLACE)
+                .build()) {
+            config.load();
+            if (!bindSpecToConfig(TelemetryConfigNeoForge.SPEC, config)) {
+                writeDefaultsManually(config);
+            }
+            config.save();
+            LOGGER.info("Created telemetry config at {}", configPath);
+        } catch (Exception ex) {
+            LOGGER.error("Failed to create telemetry config file at " + configPath, ex);
+        }
+    }
+
+    private static boolean bindSpecToConfig(ModConfigSpec spec, CommentedFileConfig config) {
+        Object[][] attempts = new Object[][] {
+                {"setConfig", new Class<?>[] {CommentedConfig.class}},
+                {"correct", new Class<?>[] {CommentedConfig.class}},
+                {"acceptConfig", new Class<?>[] {CommentedConfig.class}}
+        };
+
+        for (Object[] attempt : attempts) {
+            String methodName = (String) attempt[0];
+            Class<?>[] parameterTypes = (Class<?>[]) attempt[1];
+
+            try {
+                var method = spec.getClass().getMethod(methodName, parameterTypes);
+                method.invoke(spec, config);
+                return true;
+            } catch (NoSuchMethodException ignored) {
+                // Try next overload
+            } catch (Exception e) {
+                LOGGER.warn("Failed to bind telemetry config spec via {}: {}", methodName, e.getMessage());
+            }
+        }
+
+        return false;
+    }
+
+    private static void writeDefaultsManually(CommentedFileConfig config) {
+        config.set("detailedLogging", TelemetryConfigNeoForge.DETAILED_LOGGING.getDefault());
+        config.set("httpPort", TelemetryConfigNeoForge.HTTP_PORT.getDefault());
+        config.set("httpBindAddress", TelemetryConfigNeoForge.HTTP_BIND_ADDRESS.getDefault());
+        config.set("telemetryRefreshTicks", TelemetryConfigNeoForge.TELEMETRY_REFRESH_TICKS.getDefault());
+    }
+
+    private static boolean tryRegisterConfig(Object target, Class<?> targetClass, ModConfigSpec spec) throws Exception {
+        Object[][] attempts = new Object[][] {
+                {new Class<?>[] {ModConfig.Type.class, ModConfigSpec.class, String.class}, new Object[] {ModConfig.Type.COMMON, spec, MOD_ID + "-common.toml"}},
+                {new Class<?>[] {ModConfig.Type.class, ModConfigSpec.class}, new Object[] {ModConfig.Type.COMMON, spec}},
+                {new Class<?>[] {ModConfigSpec.class, ModConfig.Type.class}, new Object[] {spec, ModConfig.Type.COMMON}},
+                {new Class<?>[] {ModConfigSpec.class, String.class}, new Object[] {spec, MOD_ID + "-common.toml"}},
+                {new Class<?>[] {ModConfigSpec.class}, new Object[] {spec}}
+        };
+
+        for (Object[] attempt : attempts) {
+            Class<?>[] parameterTypes = (Class<?>[]) attempt[0];
+            Object[] args = (Object[]) attempt[1];
+
+            try {
+                var method = targetClass.getMethod("registerConfig", parameterTypes);
+                method.invoke(target, args);
+                return true;
+            } catch (NoSuchMethodException ignored) {
+                // Try next overload
+            }
+        }
+
+        return false;
     }
 }

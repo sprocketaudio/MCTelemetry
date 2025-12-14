@@ -1,6 +1,6 @@
 package net.sprocketgames.mctelemetry.neoforge;
 
-import net.neoforged.neoforge.common.config.ModConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class TelemetryConfigNeoForge {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
