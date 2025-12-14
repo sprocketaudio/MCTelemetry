@@ -22,7 +22,6 @@ runs {
         systemProperty 'forge.logging.console.level', 'debug'
         modSource sourceSets.main
         modSource project(':common').sourceSets.main
-        configureFromTypeWithName false
     }
 
     client {
