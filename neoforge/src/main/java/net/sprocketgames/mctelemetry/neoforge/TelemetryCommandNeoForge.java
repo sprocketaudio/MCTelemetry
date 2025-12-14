@@ -1,31 +1,27 @@
-package net.sprocketgames.mctelemetry.forge;
+package net.sprocketgames.mctelemetry.neoforge;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.logging.LogUtils;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
 import net.sprocketgames.mctelemetry.common.TelemetryPayload;
 import net.sprocketgames.mctelemetry.common.TelemetrySnapshot;
 import net.sprocketgames.mctelemetry.common.server.TelemetryCollector;
 import org.slf4j.Logger;
-import com.mojang.logging.LogUtils;
 
 import java.util.Collections;
 import java.util.List;
 
-@Mod.EventBusSubscriber(modid = MCTelemetryForge.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class TelemetryCommandForge {
+public class TelemetryCommandNeoForge {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    @SubscribeEvent
     public static void registerCommands(RegisterCommandsEvent event) {
-        boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
+        boolean detailedLogging = TelemetryConfigNeoForge.detailedLoggingEnabled();
         logDetailed(detailedLogging, "Registering /telemetry command");
         event.getDispatcher().register(buildCommand());
         logDetailed(detailedLogging, "/telemetry command registration complete");
@@ -39,7 +35,7 @@ public class TelemetryCommandForge {
                                 .executes(context -> {
                                     String nonce = StringArgumentType.getString(context, "nonce");
                                     CommandSourceStack source = context.getSource();
-                                    boolean detailedLogging = TelemetryConfig.detailedLoggingEnabled();
+                                    boolean detailedLogging = TelemetryConfigNeoForge.detailedLoggingEnabled();
 
                                     logDetailed(detailedLogging, "/telemetry json invoked with nonce '{}'", nonce);
 
@@ -78,11 +74,11 @@ public class TelemetryCommandForge {
                     detailedLogging,
                     LOGGER,
                     mcVersion,
-                    MCTelemetryForge.LOADER);
+                    MCTelemetryNeoForge.LOADER);
             return emitPayload(snapshot, detailedLogging);
         } catch (Exception e) {
             LOGGER.error("Failed while assembling telemetry JSON; returning fallback payload", e);
-            return TelemetryPayload.build(mcVersion, MCTelemetryForge.LOADER, emptyPlayers);
+            return TelemetryPayload.build(mcVersion, MCTelemetryNeoForge.LOADER, emptyPlayers);
         }
     }
 

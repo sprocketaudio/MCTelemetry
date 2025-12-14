@@ -1,4 +1,4 @@
-package net.sprocketgames.mctelemetry.forge;
+package net.sprocketgames.mctelemetry.common.server;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * Lightweight HTTP server that exposes cached telemetry JSON to localhost only.
  */
-class TelemetryHttpServer {
+public class TelemetryHttpServer {
     private static final int DEFAULT_PORT = 8765;
     private static final String DEFAULT_BIND_ADDRESS = "127.0.0.1";
     private static final String BIND_OVERRIDE_PROPERTY = "MCTELEMETRY_BIND";
@@ -31,11 +31,11 @@ class TelemetryHttpServer {
 
     private HttpServer server;
 
-    TelemetryHttpServer(Logger logger, String initialTelemetry) {
+    public TelemetryHttpServer(Logger logger, String initialTelemetry) {
         this(logger, initialTelemetry, resolvePort(DEFAULT_PORT), DEFAULT_BIND_ADDRESS);
     }
 
-    TelemetryHttpServer(Logger logger, String initialTelemetry, int port, String bindAddress) {
+    public TelemetryHttpServer(Logger logger, String initialTelemetry, int port, String bindAddress) {
         this.logger = Objects.requireNonNull(logger, "logger");
         this.lastTelemetryJson = new AtomicReference<>(initialTelemetry == null ? "{}" : initialTelemetry);
         this.port = port > 0 ? port : DEFAULT_PORT;
