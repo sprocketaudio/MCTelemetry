@@ -22,6 +22,7 @@ runs {
         systemProperty 'forge.logging.console.level', 'debug'
         modSource sourceSets.main
         modSource project(':common').sourceSets.main
+        configureFromTypeWithName false
     }
 
     client {
@@ -30,12 +31,12 @@ runs {
 
     server {
         systemProperty 'forge.enabledGameTestNamespaces', mod_id
-        args '--nogui'
+        arguments '--nogui'
     }
 
     data {
         workingDirectory project.file('run-data')
-        args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+        arguments '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
     }
 }
 
