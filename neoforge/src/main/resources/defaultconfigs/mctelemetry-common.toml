@@ -1,0 +1,7 @@
+# Telemetry configuration for NeoForge development/runtime
+# Generated defaults mirror values in TelemetryConfigNeoForge
+
+detailedLogging = false
+httpPort = 8765
+httpBindAddress = "127.0.0.1"
+telemetryRefreshTicks = 200
