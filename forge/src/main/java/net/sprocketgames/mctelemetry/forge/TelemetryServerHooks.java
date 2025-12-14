@@ -54,7 +54,7 @@ public class TelemetryServerHooks {
         }
     }
 
-    private static TelemetryCollector.TelemetrySource asTelemetrySource(MinecraftServer server) {
+    static TelemetryCollector.TelemetrySource asTelemetrySource(MinecraftServer server) {
         return new TelemetryCollector.TelemetrySource() {
             @Override
             public OptionalDouble averageTickTimeMs() {
