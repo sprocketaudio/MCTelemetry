@@ -1,9 +1,12 @@
 package net.sprocketgames.mctelemetry.neoforge;
 
 import com.mojang.logging.LogUtils;
+import com.electronwill.nightconfig.core.file.CommentedFileConfig;
+import com.electronwill.nightconfig.core.io.WritingMode;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.ModConfigSpec;
 import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
@@ -40,9 +43,27 @@ public class MCTelemetryNeoForge {
                 return;
             }
 
-            LOGGER.error("Failed to register telemetry config for NeoForge: no compatible registerConfig overload found");
+            LOGGER.error("Failed to register telemetry config for NeoForge: no compatible registerConfig overload found; manually creating config");
+            createConfigFile();
         } catch (Exception e) {
             LOGGER.error("Failed to register telemetry config for NeoForge", e);
+            createConfigFile();
+        }
+    }
+
+    private static void createConfigFile() {
+        var configPath = FMLPaths.CONFIGDIR.get().resolve(MOD_ID + "-common.toml");
+        try (var config = CommentedFileConfig.builder(configPath)
+                .sync()
+                .autosave()
+                .writingMode(WritingMode.REPLACE)
+                .build()) {
+            config.load();
+            TelemetryConfigNeoForge.SPEC.setConfig(config);
+            config.save();
+            LOGGER.info("Created telemetry config at {}", configPath);
+        } catch (Exception ex) {
+            LOGGER.error("Failed to create telemetry config file at " + configPath, ex);
         }
     }
 
