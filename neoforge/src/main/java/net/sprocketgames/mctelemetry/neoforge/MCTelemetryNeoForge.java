@@ -28,7 +28,7 @@ public class MCTelemetryNeoForge {
 
     private static void registerConfig() {
         try {
-            ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, TelemetryConfigNeoForge.SPEC, MOD_ID + "-common.toml");
+            ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, TelemetryConfigNeoForge.SPEC);
         } catch (Exception e) {
             LOGGER.error("Failed to register telemetry config for NeoForge", e);
         }
