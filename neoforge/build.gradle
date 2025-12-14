@@ -21,6 +21,9 @@ runs {
         systemProperty 'forge.logging.markers', 'REGISTRIES'
         systemProperty 'forge.logging.console.level', 'debug'
         modSource sourceSets.main
+        dependencies {
+            runtime project(':common')
+        }
     }
 
     client {
