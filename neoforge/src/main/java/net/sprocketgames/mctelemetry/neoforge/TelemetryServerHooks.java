@@ -6,7 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.event.tick.TickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.sprocketgames.mctelemetry.common.PlayerSnapshot;
@@ -49,10 +49,30 @@ public class TelemetryServerHooks {
     }
 
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
+    public static void onServerTick(ServerTickEvent event) {
+        if (isEndPhase(event)) {
             TELEMETRY_SERVICE.tick(event.getServer(), TelemetryConfigNeoForge.detailedLoggingEnabled());
         }
+    }
+
+    private static boolean isEndPhase(ServerTickEvent event) {
+        try {
+            var method = event.getClass().getMethod("getPhase");
+            Object phase = method.invoke(event);
+            return phase != null && "END".equals(phase.toString());
+        } catch (ReflectiveOperationException ignored) {
+            // Fall back to a field-based lookup used by some API variants.
+        }
+
+        try {
+            var field = event.getClass().getField("phase");
+            Object phase = field.get(event);
+            return phase != null && "END".equals(phase.toString());
+        } catch (ReflectiveOperationException ignored) {
+            // If no phase accessor is present, treat the event as the end phase to avoid missing ticks.
+        }
+
+        return true;
     }
 
     static TelemetryCollector.TelemetrySource asTelemetrySource(MinecraftServer server) {
