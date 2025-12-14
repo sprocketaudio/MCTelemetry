@@ -55,7 +55,7 @@ repositories {
 }
 
 dependencies {
-    neoForge "net.neoforged:neoforge:${neoforge_version}"
+    implementation "net.neoforged:neoforge:${neoforge_version}"
     implementation project(':common')
 }
 
